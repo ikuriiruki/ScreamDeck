@@ -23,6 +23,7 @@ pub enum StoreError {
     Io(io::Error),
     UnsupportedExtension,
     NotWritable,
+    DestinationNotEmpty,
 }
 
 impl From<io::Error> for StoreError {
@@ -37,6 +38,7 @@ impl std::fmt::Display for StoreError {
             Self::Io(e) => write!(f, "{e}"),
             Self::UnsupportedExtension => write!(f, "unsupported file type"),
             Self::NotWritable => write!(f, "folder is not writable"),
+            Self::DestinationNotEmpty => write!(f, "destination already contains a library"),
         }
     }
 }
@@ -72,8 +74,11 @@ fn is_plain_name(n: &str) -> bool {
 /// Reads `<dir>/library.json`; a corrupt file is renamed aside, never overwritten.
 fn read_library(dir: &Path) -> (Library, DataDirStatus) {
     let path = dir.join("library.json");
-    let Ok(text) = fs::read_to_string(&path) else {
-        return (Library::default(), DataDirStatus::Ok);
+    let text = match fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return (Library::default(), DataDirStatus::Ok),
+        // unreadable is not empty: refuse writes so a later save cannot clobber it
+        Err(_) => return (Library::default(), DataDirStatus::Unavailable { path: dir.to_path_buf() }),
     };
     match serde_json::from_str(&text) {
         Ok(lib) => (lib, DataDirStatus::Ok),
@@ -254,6 +259,9 @@ impl Store {
         }
         if path == old {
             return Ok(());
+        }
+        if path.join("library.json").exists() || count_files(&path.join("media")) > 0 || count_files(&path.join("thumbs")) > 0 {
+            return Err(StoreError::DestinationNotEmpty);
         }
         let mut copied = Vec::new();
         let r = (|| -> Result<(), StoreError> {
@@ -455,5 +463,32 @@ mod tests {
         assert_eq!(s.library.screamers[0].id, "z");
         assert!(d.path().join("cfg").join("library.json").exists());
         assert_eq!(s.settings.data_dir, Some(other));
+    }
+
+    #[test]
+    fn unreadable_library_is_unavailable_and_untouched() {
+        let d = tempdir().unwrap();
+        fs::create_dir(d.path().join("library.json")).unwrap();
+        let s = Store::load(d.path().to_path_buf());
+        assert!(matches!(s.data_dir_status, DataDirStatus::Unavailable { .. }));
+        s.save_library().unwrap();
+        assert!(d.path().join("library.json").is_dir());
+    }
+
+    #[test]
+    fn move_into_existing_library_is_refused() {
+        let d = tempdir().unwrap();
+        let new = d.path().join("new");
+        fs::create_dir_all(new.join("media")).unwrap();
+        fs::write(new.join("library.json"), "THEIRS").unwrap();
+        fs::write(new.join("media").join("m.png"), "THEIRS").unwrap();
+        let mut s = Store::load(d.path().join("cfg"));
+        s.upsert_screamer(mk("a", "a.png"));
+        s.save_library().unwrap();
+        assert!(s.change_data_dir(new.clone(), true).is_err());
+        assert_eq!(fs::read_to_string(new.join("library.json")).unwrap(), "THEIRS");
+        assert_eq!(fs::read_to_string(new.join("media").join("m.png")).unwrap(), "THEIRS");
+        assert!(d.path().join("cfg").join("library.json").exists());
+        assert_eq!(s.settings.data_dir, None);
     }
 }
