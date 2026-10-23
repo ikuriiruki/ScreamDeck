@@ -1,4 +1,8 @@
 pub mod monitors;
+#[allow(dead_code)]
+mod model;
+#[allow(dead_code)]
+mod store;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
