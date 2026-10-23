@@ -10,3 +10,12 @@ export function planPlayback(s: Screamer, durationMs: number) {
     volume: s.volume / 100,
   };
 }
+
+export type Tag = "img" | "video" | "audio";
+
+// Preload events carry file names only, so the element kind is guessed from the extension.
+export function guessTag(file: string): Tag {
+  if (/\.(mp4|webm|mov|m4v|mkv)$/i.test(file)) return "video";
+  if (/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i.test(file)) return "audio";
+  return "img";
+}

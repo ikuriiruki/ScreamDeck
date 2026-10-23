@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Screamer } from "../lib/types";
-import { planPlayback } from "./playback";
+import { guessTag, planPlayback } from "./playback";
 
 const base: Screamer = {
   id: "a",
@@ -42,4 +42,10 @@ test("no sound mutes video", () => {
 
 test("volume maps 0..100 to 0..1", () => {
   expect(planPlayback(with_({ volume: 70 }), 2000).volume).toBe(0.7);
+});
+
+test("preload tag is guessed from extension", () => {
+  expect(guessTag("a.MP4")).toBe("video");
+  expect(guessTag("s.mp3")).toBe("audio");
+  expect(guessTag("p.gif")).toBe("img");
 });

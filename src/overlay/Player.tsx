@@ -1,12 +1,10 @@
 import { useEffect, useRef } from "react";
 import type { Show } from "../lib/types";
-import { planPlayback } from "./playback";
+import { guessTag, planPlayback, type Tag } from "./playback";
 
 type El = HTMLImageElement | HTMLVideoElement | HTMLAudioElement;
 type Prepared = { showId: number; els: El[]; video?: HTMLVideoElement; audio?: HTMLAudioElement; visual: El };
 
-const VIDEO = /\.(mp4|webm|mov|m4v|mkv)$/i;
-const AUDIO = /\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
 
 // mode=pc: files via the asset protocol and events via Tauri (imported only here, OBS has no runtime).
 // mode=obs: files and SSE from the local server; volume already decided by the server.
@@ -22,8 +20,9 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
     let cur: Prepared | null = null;
     const cleanups: Array<() => void> = [];
 
-    const make = (file: string): El => {
-      const el = VIDEO.test(file) ? document.createElement("video") : AUDIO.test(file) ? new Audio() : new Image();
+    const tagOf = (el: El): Tag => (el instanceof HTMLVideoElement ? "video" : el instanceof HTMLAudioElement ? "audio" : "img");
+    const make = (file: string, tag: Tag): El => {
+      const el = tag === "video" ? document.createElement("video") : tag === "audio" ? new Audio() : new Image();
       if (el instanceof HTMLVideoElement) el.playsInline = true;
       if (!(el instanceof HTMLImageElement)) el.preload = "auto";
       el.src = src(file);
@@ -38,14 +37,19 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
     const ready = (el: El) =>
       new Promise<void>((done) => {
         if (el instanceof HTMLImageElement) return void el.decode().then(done, done);
-        if (el.readyState >= 4) return done();
+        // a preloaded element may have settled before we got here: events would never fire
+        if (el.readyState >= 4 || el.error || el.networkState === el.NETWORK_NO_SOURCE) return done();
         el.addEventListener("canplaythrough", () => done(), { once: true });
         el.addEventListener("error", () => done(), { once: true });
       });
-    const take = (file: string) => {
-      const el = cache.get(file) ?? make(file);
+    const take = (file: string, tag: Tag) => {
+      let el = cache.get(file);
       cache.delete(file);
-      return el;
+      if (el && tagOf(el) !== tag) {
+        unload(el);
+        el = undefined;
+      }
+      return el ?? make(file, tag);
     };
 
     const end = () => {
@@ -61,7 +65,7 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
       end();
       const { screamer: s, showId } = show;
       const plan = planPlayback(s, show.durationMs);
-      const visual = take(s.media.file);
+      const visual = take(s.media.file, s.media.kind === "video" ? "video" : "img");
       visual.style.cssText = `position:fixed;inset:0;width:100%;height:100%;object-fit:${s.fit};visibility:hidden;background:transparent`;
       const p: Prepared = { showId, els: [visual], visual };
       if (visual instanceof HTMLVideoElement) {
@@ -76,7 +80,7 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
         });
       }
       if (plan.audioFile) {
-        p.audio = take(plan.audioFile) as HTMLAudioElement;
+        p.audio = take(plan.audioFile, "audio") as HTMLAudioElement;
         p.audio.volume = plan.volume;
         p.audio.muted = !soundOn;
         p.els.push(p.audio);
@@ -98,7 +102,7 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
           unload(el);
           cache.delete(file);
         }
-      for (const file of files) if (!cache.has(file)) cache.set(file, make(file));
+      for (const file of files) if (!cache.has(file)) cache.set(file, make(file, guessTag(file)));
     };
 
     const onEnd = (showId: number) => cur?.showId === showId && end();
