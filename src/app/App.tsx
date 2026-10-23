@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { stop, updateSettings, useLibrary, useSettings, useStatus } from "../lib/api";
 import type { Settings } from "../lib/types";
+import { ScreamerEdit } from "../pages/ScreamerEdit";
+import { Screamers } from "../pages/Screamers";
 import { SetDetail } from "../pages/SetDetail";
 import { Sets, type Notify } from "../pages/Sets";
-import { BottomNav, Button, Segmented, SubScreen, TabScreen, Toasts, type Tab, type Toast } from "../ui";
+import { BottomNav, Button, Segmented, TabScreen, Toasts, type Tab, type Toast } from "../ui";
 import i18n, { languageOf, type Language } from "./i18n";
 import { applyTheme } from "./theme";
 
@@ -32,8 +34,8 @@ export default function App() {
       <div className="backdrop-k" />
       {screen.sub?.kind === "set" && screen.sub.id ? (
         library && status && <SetDetail id={screen.sub.id} library={library} status={status} notify={notify} onBack={() => setScreen({ tab: screen.tab })} />
-      ) : screen.sub ? (
-        <SubScreen title="" onBack={() => setScreen({ tab: screen.tab })}>{null}</SubScreen>
+      ) : screen.sub?.kind === "screamer" ? (
+        library && status && <ScreamerEdit id={screen.sub.id} library={library} status={status} notify={notify} onBack={() => setScreen({ tab: screen.tab })} />
       ) : (
         <TabScreen
           title="ScreamDeck"
@@ -42,6 +44,9 @@ export default function App() {
         >
           {screen.tab === "sets" && library && status && (
             <Sets library={library} status={status} notify={notify} onOpen={(id) => setScreen({ tab: "sets", sub: { kind: "set", id } })} />
+          )}
+          {screen.tab === "screamers" && library && status && (
+            <Screamers library={library} status={status} notify={notify} onOpen={(id) => setScreen({ tab: "screamers", sub: { kind: "screamer", id } })} />
           )}
           {screen.tab === "settings" && settings && <LookSettings settings={settings} language={language} />}
         </TabScreen>

@@ -86,6 +86,57 @@
     "copySuffix": " (копия)",
     "failed": "Не удалось прочитать архив: {{error}}"
   },
+  "screamers": {
+    "empty": "Скримеров пока нет — добавьте первый",
+    "inSets_one": "в {{count}} наборе",
+    "inSets_few": "в {{count}} наборах",
+    "inSets_many": "в {{count}} наборах",
+    "inSets_other": "в {{count}} наборах",
+    "nowhere": "нигде"
+  },
+  "screamer": {
+    "new": "Новый скример",
+    "pick": "Выбрать файл",
+    "formats": "Картинка, гифка или видео: PNG, JPG, WebP, GIF, MP4, WebM",
+    "mediaFiles": "Картинки и видео",
+    "soundFiles": "Звук",
+    "replace": "Заменить файл",
+    "name": "Название",
+    "sound": {
+      "label": "Звук",
+      "fromVideo": "Из видео",
+      "file": "Свой файл",
+      "none": "Без звука",
+      "own": "Свой звук",
+      "replace": "Заменить звук"
+    },
+    "bySound": "По длине звука",
+    "custom": "Своя",
+    "marks": {
+      "video": "видео",
+      "sound": "звук",
+      "videoAndSound": "видео и звук"
+    },
+    "volume": "Громкость",
+    "volumeValue": "Громкость · {{value}}%",
+    "fit": {
+      "label": "Вписывание",
+      "cover": "Заполнить",
+      "contain": "Целиком"
+    },
+    "test": "Проверить",
+    "save": "Сохранить",
+    "delete": "Удалить скример",
+    "deleteConfirm": {
+      "title": "Удалить скример «{{name}}»?",
+      "body_one": "Он пропадёт из {{count}} набора.",
+      "body_few": "Он пропадёт из {{count}} наборов.",
+      "body_many": "Он пропадёт из {{count}} наборов.",
+      "body_other": "Он пропадёт из {{count}} наборов.",
+      "bodyNone": "Он не входит ни в один набор.",
+      "confirm": "Удалить"
+    }
+  },
   "settings": {
     "language": "Язык",
     "theme": { "label": "Тема", "light": "Светлая", "dark": "Тёмная", "system": "Как в системе" }

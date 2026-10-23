@@ -1,5 +1,9 @@
 import type { Screamer } from "./types";
 
+/** «3,2» / «3.2»: seconds to one decimal, for `units.seconds`. */
+export const formatSeconds = (ms: number, language: string) =>
+  (ms / 1000).toLocaleString(language, { maximumFractionDigits: 1, useGrouping: false });
+
 export type DurationMark = { ms: number; label: "video" | "sound" | "videoAndSound" };
 
 /** Lengths the custom duration slider sticks to: the video and the sound, merged when they are the same. */
@@ -41,4 +45,13 @@ export function parseSeconds(text: string): number | null {
 export function showDurationMs(s: Screamer): number | null {
   if (s.duration.mode === "custom") return s.duration.ms;
   return s.sound.mode === "file" ? s.sound.durationMs : s.sound.mode === "fromVideo" ? s.media.durationMs : null;
+}
+
+/** Drops choices the media no longer allows: sound from a non-video, «by sound» without sound (→ «custom» at its start value). */
+export function withValidModes(s: Screamer): Screamer {
+  const sound = s.sound.mode === "fromVideo" && s.media.kind !== "video" ? { mode: "none" as const } : s.sound;
+  const next = { ...s, sound };
+  return next.duration.mode === "bySound" && showDurationMs(next) == null
+    ? { ...next, duration: { mode: "custom", ms: initialCustomDuration(next) } }
+    : next;
 }

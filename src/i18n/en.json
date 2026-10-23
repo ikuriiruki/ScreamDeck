@@ -86,6 +86,53 @@
     "copySuffix": " (copy)",
     "failed": "Couldn’t read the archive: {{error}}"
   },
+  "screamers": {
+    "empty": "No screamers yet — add the first one",
+    "inSets_one": "in {{count}} set",
+    "inSets_other": "in {{count}} sets",
+    "nowhere": "in no set"
+  },
+  "screamer": {
+    "new": "New screamer",
+    "pick": "Choose a file",
+    "formats": "An image, GIF or video: PNG, JPG, WebP, GIF, MP4, WebM",
+    "mediaFiles": "Images and videos",
+    "soundFiles": "Sound",
+    "replace": "Replace file",
+    "name": "Name",
+    "sound": {
+      "label": "Sound",
+      "fromVideo": "From video",
+      "file": "Own file",
+      "none": "No sound",
+      "own": "Own sound",
+      "replace": "Replace sound"
+    },
+    "bySound": "Sound length",
+    "custom": "Custom",
+    "marks": {
+      "video": "video",
+      "sound": "sound",
+      "videoAndSound": "video and sound"
+    },
+    "volume": "Volume",
+    "volumeValue": "Volume · {{value}}%",
+    "fit": {
+      "label": "Fit",
+      "cover": "Fill",
+      "contain": "Whole"
+    },
+    "test": "Test",
+    "save": "Save",
+    "delete": "Delete screamer",
+    "deleteConfirm": {
+      "title": "Delete screamer “{{name}}”?",
+      "body_one": "It will be removed from {{count}} set.",
+      "body_other": "It will be removed from {{count}} sets.",
+      "bodyNone": "It isn’t in any set.",
+      "confirm": "Delete"
+    }
+  },
   "settings": {
     "language": "Language",
     "theme": { "label": "Theme", "light": "Light", "dark": "Dark", "system": "System" }

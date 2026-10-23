@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Screamer } from "./types";
-import { durationMarks, initialCustomDuration, parseSeconds, showDurationMs, snapDuration } from "./duration";
+import { durationMarks, initialCustomDuration, parseSeconds, showDurationMs, snapDuration, withValidModes } from "./duration";
 
 const video: Screamer = {
   id: "a",
@@ -53,3 +53,10 @@ test("show duration: custom, by sound file, from video, none", () => {
   expect(showDurationMs({ ...video, sound: { mode: "fromVideo" } })).toBe(3200);
   expect(showDurationMs(image)).toBeNull();
 });
+
+test("valid modes: sound from video drops for an image, by-sound turns custom", () =>
+  expect(withValidModes({ ...image, sound: { mode: "fromVideo" } })).toMatchObject({ sound: { mode: "none" }, duration: { mode: "custom", ms: 3000 } }));
+test("valid modes: by-sound without sound starts at the video length", () =>
+  expect(withValidModes(video).duration).toEqual({ mode: "custom", ms: 3200 }));
+test("valid modes: by-sound with sound stays", () =>
+  expect(withValidModes({ ...video, sound: { mode: "fromVideo" } })).toEqual({ ...video, sound: { mode: "fromVideo" } }));

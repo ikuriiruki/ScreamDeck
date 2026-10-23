@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { thumbUrl } from "../../lib/api";
-import { showDurationMs } from "../../lib/duration";
+import { formatSeconds, showDurationMs } from "../../lib/duration";
 import type { Screamer, SetItem } from "../../lib/types";
 import { weightPercents } from "../../lib/weights";
 import { Icon } from "../atoms/Icon";
@@ -14,7 +14,7 @@ export function useScreamerMeta() {
   return (s: Screamer) => {
     const ms = showDurationMs(s);
     const kind = t(`kinds.${s.media.kind}`);
-    return ms == null ? kind : `${kind} · ${t("units.seconds", { value: (ms / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1, useGrouping: false }) })}`;
+    return ms == null ? kind : `${kind} · ${t("units.seconds", { value: formatSeconds(ms, i18n.language) })}`;
   };
 }
 

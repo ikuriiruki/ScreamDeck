@@ -20,6 +20,7 @@ export const importSound = (path: string) => invoke<string>("import_sound", { pa
 export const discardMedia = (files: string[]) => invoke<void>("discard_media", { files });
 /** `thumb` is relative to the data folder (Status.dataPath). */
 export const thumbUrl = (dataPath: string, thumb: string | null) => (thumb ? convertFileSrc(`${dataPath}/${thumb}`) : null);
+export const mediaUrl = (dataPath: string, file: string) => convertFileSrc(`${dataPath}/media/${file}`);
 export const saveThumbnail = (id: string, bytes: Uint8Array) => invoke<string>("save_thumbnail", { id, bytes: Array.from(bytes) });
 
 export const saveSet = (set: ScreamSet) => invoke<ScreamSet>("save_set", { set });

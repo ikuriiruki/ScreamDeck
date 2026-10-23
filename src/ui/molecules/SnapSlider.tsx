@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { parseSeconds, snapDuration } from "../../lib/duration";
+import { formatSeconds, parseSeconds, snapDuration } from "../../lib/duration";
 import { Input } from "../atoms/Input";
 import { Slider } from "../atoms/Slider";
 
@@ -21,7 +21,7 @@ export function SnapSlider({ valueMs, onChange, maxMs, marks }: {
   const ctrl = useRef(false);
   const [draft, setDraft] = useState<string | null>(null);
   const markMs = marks.map((m) => m.ms);
-  const number = (ms: number) => (ms / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1, useGrouping: false });
+  const number = (ms: number) => formatSeconds(ms, i18n.language);
   const seconds = (ms: number) => t("units.seconds", { value: number(ms) });
   const commit = (noSnap: boolean) => {
     const ms = draft === null ? null : parseSeconds(draft);
@@ -60,11 +60,12 @@ export function SnapSlider({ valueMs, onChange, maxMs, marks }: {
         </label>
       </div>
       {marks.length > 0 && (
-        <div className="relative mr-[100px] h-5">
-          {marks.filter((m) => m.ms <= maxMs).map((m) => (
+        // one line per mark: close marks would overlap on one line
+        <div className="relative mr-[100px]" style={{ height: marks.length * 20 }}>
+          {marks.filter((m) => m.ms <= maxMs).map((m, i) => (
             <button
-              key={m.ms} type="button" onClick={() => onChange(m.ms)} style={{ left: pos(m.ms) }}
-              className={`absolute top-0 ${shift(m.ms)} rounded-full px-1.5 text-xs whitespace-nowrap text-ink-2 transition-colors duration-200 ease-k hover:text-acc-ink`}
+              key={m.ms} type="button" onClick={() => onChange(m.ms)} style={{ left: pos(m.ms), top: i * 20 }}
+              className={`absolute ${shift(m.ms)} rounded-full px-1.5 text-xs whitespace-nowrap text-ink-2 transition-colors duration-200 ease-k hover:text-acc-ink`}
             >
               {m.label} · {seconds(m.ms)}
             </button>
