@@ -103,8 +103,8 @@ pub fn delete_set(app: AppHandle, id: Id) -> CmdResult {
 }
 
 #[tauri::command]
-pub fn set_enabled(app: AppHandle, id: Id, enabled: bool) {
-    runtime::set_enabled(&app, &id, enabled);
+pub fn set_enabled(app: AppHandle, id: Id, enabled: bool) -> CmdResult {
+    runtime::set_enabled(&app, &id, enabled).map_err(|e| e.to_string())
 }
 
 /// Neither id → a random screamer of the whole library, all equally likely.
@@ -142,8 +142,9 @@ pub async fn update_settings(app: AppHandle, settings: Settings) -> CmdResult {
         let old = std::mem::replace(&mut s.settings, new);
         (old, s.save_settings())
     };
-    runtime::apply_settings(&app, &old);
-    r.map_err(|e| e.to_string())
+    let applied = runtime::apply_settings(&app, &old);
+    r.map_err(|e| e.to_string())?;
+    applied
 }
 
 #[tauri::command]
@@ -154,8 +155,9 @@ pub async fn reset_settings(app: AppHandle) -> CmdResult {
         s.reset_settings();
         (old, s.save_settings())
     };
-    runtime::apply_settings(&app, &old);
-    r.map_err(|e| e.to_string())
+    let applied = runtime::apply_settings(&app, &old);
+    r.map_err(|e| e.to_string())?;
+    applied
 }
 
 #[tauri::command]

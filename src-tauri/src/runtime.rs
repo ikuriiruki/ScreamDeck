@@ -66,6 +66,8 @@ pub struct AppState {
     pub overlay_tx: broadcast::Sender<OverlayEvent>,
     pub server: Mutex<ServerStatus>,
     pub hotkey_error: Mutex<Option<String>>,
+    /// Asset-protocol scope for media/ and thumbs/ could not be set: windows can't load files.
+    pub media_error: Mutex<Option<String>>,
     show: Mutex<Option<ActiveShow>>,
 }
 
@@ -78,6 +80,7 @@ impl AppState {
             overlay_tx: broadcast::channel(64).0,
             server: Mutex::new(ServerStatus::Stopped),
             hotkey_error: Mutex::default(),
+            media_error: Mutex::default(),
             show: Mutex::default(),
         }
     }
@@ -91,6 +94,7 @@ pub struct Status {
     pub data_dir: DataDirStatus,
     pub data_path: PathBuf,
     pub hotkey_error: Option<String>,
+    pub media_error: Option<String>,
     pub version: String,
 }
 
@@ -132,15 +136,16 @@ pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
     apply(app, fx);
 }
 
-pub fn set_enabled<R: Runtime>(app: &AppHandle<R>, set_id: &str, enabled: bool) {
-    {
+pub fn set_enabled<R: Runtime>(app: &AppHandle<R>, set_id: &str, enabled: bool) -> std::io::Result<()> {
+    let r = {
         let st = app.state::<AppState>();
         let mut store = st.store.lock().unwrap();
-        let Some(set) = store.library.sets.iter_mut().find(|s| s.id == set_id) else { return };
+        let Some(set) = store.library.sets.iter_mut().find(|s| s.id == set_id) else { return Ok(()) };
         set.enabled = enabled;
-        let _ = store.save_library();
-    }
+        store.save_library()
+    };
     on_library_changed(app);
+    r
 }
 
 pub fn player_ready<R: Runtime>(app: &AppHandle<R>, show_id: u64) {
@@ -186,17 +191,20 @@ pub fn on_library_changed<R: Runtime>(app: &AppHandle<R>) {
     emit_status(app);
 }
 
-pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) {
+/// Applies everything it can; returns the first failure so the UI can say what didn't apply.
+pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) -> Result<(), String> {
     let new = app.state::<AppState>().store.lock().unwrap().settings.clone();
+    let mut result = Ok(());
     if new.monitors != old.monitors || new.hide_from_capture != old.hide_from_capture {
-        let _ = monitors::open_monitor_windows(app, &new.monitors, new.hide_from_capture);
+        result = result.and(monitors::open_monitor_windows(app, &new.monitors, new.hide_from_capture).map_err(|e| format!("monitor windows: {e}")));
     }
     if new.stop_hotkey != old.stop_hotkey {
         register_hotkey(app, &new.stop_hotkey);
     }
     if new.autostart != old.autostart {
         use tauri_plugin_autostart::ManagerExt;
-        let _ = if new.autostart { app.autolaunch().enable() } else { app.autolaunch().disable() };
+        let r = if new.autostart { app.autolaunch().enable() } else { app.autolaunch().disable() };
+        result = result.and(r.map_err(|e| format!("autostart: {e}")));
     }
     if new.language != old.language
         && let (Some(tray), Ok(menu)) = (app.tray_by_id("main"), crate::tray_menu(app, &new))
@@ -206,6 +214,7 @@ pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) {
     // api_port: the server restart lands with the server itself (Task 6).
     let _ = app.emit("app://settings", &new);
     emit_status(app);
+    result
 }
 
 /// After the store (re)loaded a library: startup, retry, or a new data folder.
@@ -216,11 +225,13 @@ pub fn reload_library<R: Runtime>(app: &AppHandle<R>, keep_enabled: bool) {
         let mut store = st.store.lock().unwrap();
         if !keep_enabled && store.library.sets.iter().any(|s| s.enabled) {
             store.library.sets.iter_mut().for_each(|s| s.enabled = false);
-            let _ = store.save_library();
+            if let Err(e) = store.save_library() {
+                eprintln!("screamdeck: saving disabled sets failed: {e}");
+            }
         }
         let scope = app.asset_protocol_scope();
-        let _ = scope.allow_directory(store.media_dir(), true);
-        let _ = scope.allow_directory(store.thumbs_dir(), true);
+        let r = scope.allow_directory(store.media_dir(), true).and_then(|_| scope.allow_directory(store.thumbs_dir(), true));
+        *st.media_error.lock().unwrap() = r.err().map(|e| e.to_string());
         let _ = app.emit("app://settings", &store.settings);
     }
     on_library_changed(app);
@@ -252,6 +263,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Status {
         data_dir: store.data_dir_status.clone(),
         data_path: store.data_dir(),
         hotkey_error: st.hotkey_error.lock().unwrap().clone(),
+        media_error: st.media_error.lock().unwrap().clone(),
         version: app.package_info().version.to_string(),
     }
 }
@@ -343,7 +355,11 @@ fn prepare_show<R: Runtime>(app: &AppHandle<R>, show: Show) {
 fn play_show<R: Runtime>(app: &AppHandle<R>, show_id: u64, duration_ms: u64, to_pc: bool) {
     let st = app.state::<AppState>();
     match st.show.lock().unwrap().as_mut() {
-        Some(s) if s.id == show_id => s.on_screen = to_pc,
+        // Sent under the lock: end_show clears it before sending End, so Play never follows End.
+        Some(s) if s.id == show_id => {
+            s.on_screen = to_pc;
+            let _ = st.overlay_tx.send(OverlayEvent::Play { show_id });
+        }
         _ => return,
     }
     // Window show/hide happen on the main thread, in order; a cross-thread ShowWindow
@@ -359,7 +375,6 @@ fn play_show<R: Runtime>(app: &AppHandle<R>, show_id: u64, duration_ms: u64, to_
             let _ = a.emit("player://play", ShowRef { show_id });
         }
     });
-    let _ = st.overlay_tx.send(OverlayEvent::Play { show_id });
     let app = app.clone();
     spawn(async move {
         sleep(Duration::from_millis(duration_ms)).await;
@@ -405,7 +420,9 @@ fn end_show<R: Runtime>(app: &AppHandle<R>, show_id: u64) {
 
 pub fn init<R: Runtime>(app: &AppHandle<R>) {
     let settings = app.state::<AppState>().store.lock().unwrap().settings.clone();
-    let _ = monitors::open_monitor_windows(app, &settings.monitors, settings.hide_from_capture);
+    if let Err(e) = monitors::open_monitor_windows(app, &settings.monitors, settings.hide_from_capture) {
+        eprintln!("screamdeck: monitor windows: {e}");
+    }
     register_hotkey(app, &settings.stop_hotkey);
     reload_library(app, settings.restore_enabled_sets);
 }
@@ -442,5 +459,35 @@ mod tests {
         stop_all(h);
         assert!(matches!(recv(&mut rx), OverlayEvent::End { show_id: 2 }));
         assert!(app.state::<AppState>().show.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn interrupted_show_timer_does_not_end_the_new_show() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::load(dir.path().to_path_buf());
+        let screamer = |id: &str, ms| Screamer { id: id.into(), duration: DurationMode::Custom { ms }, ..Default::default() };
+        store.library = Library { screamers: vec![screamer("short", 100), screamer("long", 60_000)], ..Default::default() };
+        let app = tauri::test::mock_app();
+        app.manage(AppState::new(store));
+        let h = app.handle();
+        let mut rx = app.state::<AppState>().overlay_tx.subscribe();
+
+        request_show(h, "short", Target::Overlay, Source::Test).unwrap();
+        request_show(h, "long", Target::Overlay, Source::Test).unwrap();
+        block_on(async { sleep(Duration::from_millis(300)).await });
+        let mut seen: Vec<(u64, &str)> = vec![];
+        while let Ok(e) = rx.try_recv() {
+            seen.push(match e {
+                OverlayEvent::Prepare(s) => (s.show_id, "prepare"),
+                OverlayEvent::Play { show_id } => (show_id, "play"),
+                OverlayEvent::End { show_id } => (show_id, "end"),
+                OverlayEvent::Preload { .. } => continue,
+            });
+        }
+        let of = |id| seen.iter().filter(|(i, _)| *i == id).map(|(_, k)| *k).collect::<Vec<_>>();
+        // show 1 may be interrupted before or after its Play; Play never follows End
+        assert!(matches!(of(1).as_slice(), ["prepare", "end"] | ["prepare", "play", "end"]), "{seen:?}");
+        assert_eq!(of(2), ["prepare", "play"], "{seen:?}");
+        assert!(app.state::<AppState>().show.lock().unwrap().as_ref().is_some_and(|s| s.id == 2));
     }
 }
