@@ -19,7 +19,6 @@ const READY_TIMEOUT: Duration = Duration::from_secs(2);
 const HIDE_DELAY: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)] // read by the SSE feed (Task 6)
 pub enum OverlayEvent {
     Prepare(Show),
     Play { show_id: u64 },
@@ -29,7 +28,6 @@ pub enum OverlayEvent {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "state", rename_all = "camelCase")]
-#[allow(dead_code)] // Running/PortBusy come with the server (Task 6)
 pub enum ServerStatus {
     Running { port: u16 },
     PortBusy { port: u16 },
@@ -37,7 +35,7 @@ pub enum ServerStatus {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)] // ApiDisabled and the Rejected reason are for the API (Task 6), which alone checks `api_enabled`
+/// `ApiDisabled` comes from the API alone: only it checks `api_enabled`.
 pub enum SetTriggerError {
     NotFound,
     ApiDisabled,
@@ -65,6 +63,7 @@ pub struct AppState {
     pub sets: Mutex<HashMap<Id, SetRun>>,
     pub overlay_tx: broadcast::Sender<OverlayEvent>,
     pub server: Mutex<ServerStatus>,
+    pub server_task: Mutex<Option<JoinHandle<()>>>,
     pub hotkey_error: Mutex<Option<String>>,
     /// Asset-protocol scope for media/ and thumbs/ could not be set: windows can't load files.
     pub media_error: Mutex<Option<String>>,
@@ -79,6 +78,7 @@ impl AppState {
             sets: Mutex::default(),
             overlay_tx: broadcast::channel(64).0,
             server: Mutex::new(ServerStatus::Stopped),
+            server_task: Mutex::default(),
             hotkey_error: Mutex::default(),
             media_error: Mutex::default(),
             show: Mutex::default(),
@@ -104,17 +104,19 @@ struct ShowRef {
     show_id: u64,
 }
 
-pub fn request_show<R: Runtime>(app: &AppHandle<R>, screamer_id: &str, target: Target, source: Source) -> Result<(), Rejected> {
+/// `Ok(true)`: queued behind the current show (API requests only).
+pub fn request_show<R: Runtime>(app: &AppHandle<R>, screamer_id: &str, target: Target, source: Source) -> Result<bool, Rejected> {
     let st = app.state::<AppState>();
     let store = st.store.lock().unwrap();
     let mut player = st.player.lock().unwrap();
+    let queued = source == Source::Api && player.is_busy();
     let fx = player.request(screamer_id, target, source, &store.library)?;
     apply(app, fx);
-    Ok(())
+    Ok(queued)
 }
 
 /// Timer requests show the set's preselected (preloaded) `next_screamer`; others pick now.
-pub fn request_from_set<R: Runtime>(app: &AppHandle<R>, set_id: &str, target: Target, source: Source) -> Result<(), SetTriggerError> {
+pub fn request_from_set<R: Runtime>(app: &AppHandle<R>, set_id: &str, target: Target, source: Source) -> Result<bool, SetTriggerError> {
     let st = app.state::<AppState>();
     let id = {
         let store = st.store.lock().unwrap();
@@ -211,7 +213,9 @@ pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) -> Result<
     {
         let _ = tray.set_menu(Some(menu));
     }
-    // api_port: the server restart lands with the server itself (Task 6).
+    if new.api_port != old.api_port {
+        restart_server(app);
+    }
     let _ = app.emit("app://settings", &new);
     emit_status(app);
     result
@@ -273,7 +277,7 @@ fn emit_status<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Media and sound files of every running set's next screamer.
-fn preload_files<R: Runtime>(app: &AppHandle<R>) -> Vec<String> {
+pub fn preload_files<R: Runtime>(app: &AppHandle<R>) -> Vec<String> {
     let st = app.state::<AppState>();
     let store = st.store.lock().unwrap();
     let sets = st.sets.lock().unwrap();
@@ -425,6 +429,18 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
     }
     register_hotkey(app, &settings.stop_hotkey);
     reload_library(app, settings.restore_enabled_sets);
+    restart_server(app);
+}
+
+/// (Re)binds the server to `api_port`; the outcome reaches the UI via `app://status`.
+pub fn restart_server<R: Runtime>(app: &AppHandle<R>) {
+    let app = app.clone();
+    spawn(async move {
+        let port = app.state::<AppState>().store.lock().unwrap().settings.api_port;
+        let status = crate::server::start(app.clone(), port).await;
+        *app.state::<AppState>().server.lock().unwrap() = status;
+        emit_status(&app);
+    });
 }
 
 #[cfg(test)]

@@ -2,6 +2,7 @@ use crate::model::{Id, Library, MediaKind, ScreamSet, Screamer, Settings, Target
 use crate::monitors::{self, MonitorInfo};
 use crate::player::Source;
 use crate::runtime::{self, AppState, Status};
+use crate::server;
 use crate::store::{DirState, Store};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -113,7 +114,7 @@ pub fn trigger_test(app: AppHandle, screamer_id: Option<Id>, set_id: Option<Id>,
     let id = match (screamer_id, set_id) {
         (Some(id), _) => id,
         (None, Some(set)) => {
-            return runtime::request_from_set(&app, &set, target, Source::Test).map_err(|e| format!("{e:?}"));
+            return runtime::request_from_set(&app, &set, target, Source::Test).map(drop).map_err(|e| format!("{e:?}"));
         }
         (None, None) => {
             let s = store(&app);
@@ -124,7 +125,7 @@ pub fn trigger_test(app: AppHandle, screamer_id: Option<Id>, set_id: Option<Id>,
             all[rand::random_range(0..all.len())].id.clone()
         }
     };
-    runtime::request_show(&app, &id, target, Source::Test).map_err(|e| format!("{e:?}"))
+    runtime::request_show(&app, &id, target, Source::Test).map(drop).map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -189,4 +190,19 @@ pub fn retry_data_dir(app: AppHandle) {
     store(&app).retry_data_dir();
     let keep = store(&app).settings.restore_enabled_sets;
     runtime::reload_library(&app, keep);
+}
+
+/// For a busy port: saves the first free one from the current port up and restarts the server there.
+#[tauri::command]
+pub async fn pick_free_port(app: AppHandle) -> CmdResult<u16> {
+    let (old, r, port) = {
+        let mut s = store(&app);
+        let port = server::find_free_port(s.settings.api_port).ok_or("no free port")?;
+        let old = s.settings.clone();
+        s.settings.api_port = port;
+        (old, s.save_settings(), port)
+    };
+    let applied = runtime::apply_settings(&app, &old);
+    r.map_err(|e| e.to_string())?;
+    applied.map(|_| port)
 }

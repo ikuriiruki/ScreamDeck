@@ -4,6 +4,7 @@ mod monitors;
 mod pick;
 mod player;
 mod runtime;
+mod server;
 mod store;
 
 use model::Settings;
@@ -96,6 +97,7 @@ pub fn run() {
             commands::inspect_data_dir,
             commands::change_data_dir,
             commands::retry_data_dir,
+            commands::pick_free_port,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
