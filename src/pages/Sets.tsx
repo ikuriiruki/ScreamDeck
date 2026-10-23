@@ -56,22 +56,30 @@ export function Sets({ library, status, notify, onOpen }: { library: Library; st
   );
 }
 
-/** One banner: data folder trouble, then media access, then the busy port, else how many sets run. */
+/** Each problem gets its own banner (data folder, media access, busy port), so none hides another's fix; with none, how many sets run. */
 function Verdict({ status, notify }: { status: Status; notify: Notify }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const link = "text-[15px] font-medium underline decoration-[1.5px] underline-offset-4 transition-opacity duration-200 ease-k hover:opacity-75 disabled:opacity-50";
   const path = (p: string) => <span className="break-all">{p}</span>;
-
   const dir = status.dataDir;
-  if (dir.state === "unavailable") {
-    const choose = async () => {
-      const p = await open({ directory: true });
-      if (p) await changeDataDir(p, false);
-    };
-    return (
+  const server = status.server;
+
+  const choose = async () => {
+    const p = await open({ directory: true });
+    if (p) await changeDataDir(p, false);
+  };
+  const pick = () => {
+    setBusy(true);
+    pickFreePort()
+      .then((port) => notify(t("sets.portBusy.done", { port })), fail(notify))
+      .finally(() => setBusy(false));
+  };
+
+  const problems = [
+    dir.state === "unavailable" && (
       <VerdictBanner
-        tone="down" num="!" title={t("sets.dataDir.unavailable")} sub={path(dir.path)}
+        key="dir" tone="down" num="!" title={t("sets.dataDir.unavailable")} sub={path(dir.path)}
         action={
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <button type="button" className={link} onClick={() => void retryDataDir().catch(fail(notify))}>{t("sets.dataDir.retry")}</button>
@@ -79,24 +87,20 @@ function Verdict({ status, notify }: { status: Status; notify: Notify }) {
           </div>
         }
       />
-    );
-  }
-  if (dir.state === "corrupt") return <VerdictBanner tone="down" num="!" title={t("sets.dataDir.corrupt")} sub={path(t("sets.dataDir.corruptSub", { backup: dir.backup }))} />;
-  if (status.mediaError) return <VerdictBanner tone="down" num="!" title={t("sets.mediaError")} sub={status.mediaError} />;
-  if (status.server.state === "portBusy") {
-    const pick = () => {
-      setBusy(true);
-      pickFreePort()
-        .then((port) => notify(t("sets.portBusy.done", { port })), fail(notify))
-        .finally(() => setBusy(false));
-    };
-    return (
+    ),
+    dir.state === "corrupt" && (
+      <VerdictBanner key="dir" tone="down" num="!" title={t("sets.dataDir.corrupt")} sub={path(t("sets.dataDir.corruptSub", { backup: dir.backup }))} />
+    ),
+    status.mediaError && <VerdictBanner key="media" tone="down" num="!" title={t("sets.mediaError")} sub={status.mediaError} />,
+    server.state === "portBusy" && (
       <VerdictBanner
-        tone="alert" num="!" title={t("sets.portBusy.title", { port: status.server.port })}
+        key="port" tone="alert" num="!" title={t("sets.portBusy.title", { port: server.port })}
         action={<button type="button" className={link} disabled={busy} onClick={pick}>{t("sets.portBusy.action")}</button>}
       />
-    );
-  }
+    ),
+  ].filter(Boolean);
+  if (problems.length) return <>{problems}</>;
+
   const n = status.enabledSets.length;
   return n > 0
     ? <VerdictBanner tone="calm" num={n} title={t("sets.verdict.running", { count: n })} sub={t("sets.verdict.runningSub")} />
