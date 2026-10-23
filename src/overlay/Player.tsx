@@ -38,7 +38,7 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
       new Promise<void>((done) => {
         if (el instanceof HTMLImageElement) return void el.decode().then(done, done);
         // a preloaded element may have settled before we got here: events would never fire
-        if (el.readyState >= 4 || el.error || el.networkState === el.NETWORK_NO_SOURCE) return done();
+        if (el.readyState >= 4 || el.error) return done();
         el.addEventListener("canplaythrough", () => done(), { once: true });
         el.addEventListener("error", () => done(), { once: true });
       });
