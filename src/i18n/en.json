@@ -1,0 +1,16 @@
+{
+  "nav": { "label": "Sections", "sets": "Sets", "screamers": "Screamers", "settings": "Settings" },
+  "stop": "Stop",
+  "back": "Back",
+  "dismiss": "Dismiss",
+  "copy": { "action": "Copy", "done": "Copied" },
+  "weight": { "label": "Weight", "less": "Less", "more": "More" },
+  "duration": { "label": "Duration" },
+  "units": { "seconds": "{{value}} s" },
+  "hotkey": { "change": "Change shortcut", "press": "Press a shortcut…" },
+  "monitors": { "label": "Monitors", "screen": "Monitor {{n}}", "primary": "primary" },
+  "settings": {
+    "language": "Language",
+    "theme": { "label": "Theme", "light": "Light", "dark": "Dark", "system": "System" }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "nav": { "label": "Разделы", "sets": "Наборы", "screamers": "Скримеры", "settings": "Настройки" },
+  "stop": "Стоп",
+  "back": "Назад",
+  "dismiss": "Закрыть",
+  "copy": { "action": "Скопировать", "done": "Скопировано" },
+  "weight": { "label": "Вес", "less": "Меньше", "more": "Больше" },
+  "duration": { "label": "Длительность" },
+  "units": { "seconds": "{{value}} с" },
+  "hotkey": { "change": "Изменить сочетание", "press": "Нажмите сочетание…" },
+  "monitors": { "label": "Мониторы", "screen": "Монитор {{n}}", "primary": "основной" },
+  "settings": {
+    "language": "Язык",
+    "theme": { "label": "Тема", "light": "Светлая", "dark": "Тёмная", "system": "Как в системе" }
+  }
+}
