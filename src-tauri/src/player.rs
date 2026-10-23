@@ -6,6 +6,7 @@ const MAX_QUEUE: usize = 10;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Source {
     Timer,
+    #[allow(dead_code)] // API requests (Task 6)
     Api,
     Test,
 }
@@ -76,10 +77,12 @@ impl Player {
         self.current.take().map(|s| Effect::End { show_id: s.show_id }).into_iter().collect()
     }
 
+    #[allow(dead_code)] // API (Task 6)
     pub fn is_busy(&self) -> bool {
         self.current.is_some()
     }
 
+    #[allow(dead_code)] // API (Task 6)
     pub fn queue_len(&self) -> usize {
         self.queue.len()
     }

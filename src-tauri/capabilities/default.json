@@ -5,6 +5,8 @@
   "windows": ["main", "mon-*"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "dialog:default",
+    "autostart:default"
   ]
 }

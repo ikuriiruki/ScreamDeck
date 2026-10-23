@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::{SW_HIDE, SW_SHOWNOACTIVATE, SHOW_WINDOW_CMD, ShowWindow};
 
@@ -13,7 +13,7 @@ pub struct MonitorInfo {
     pub primary: bool,
 }
 
-pub fn list_monitors(app: &AppHandle) -> Vec<MonitorInfo> {
+pub fn list_monitors<R: Runtime>(app: &AppHandle<R>) -> Vec<MonitorInfo> {
     let primary = app.primary_monitor().ok().flatten().and_then(|m| m.name().cloned());
     app.available_monitors()
         .unwrap_or_default()
@@ -32,14 +32,18 @@ pub fn list_monitors(app: &AppHandle) -> Vec<MonitorInfo> {
         .collect()
 }
 
-/// One overlay window per selected (and connected) monitor, labels `mon-0..`.
+/// One overlay window per selected (and connected) monitor, labels `mon-0..`; none connected → the primary one.
 /// Windows are created hidden and are shown only around a show (spike outcome: variant A, "hidden").
-pub fn open_monitor_windows(app: &AppHandle, monitor_names: &[String], hide_from_capture: bool) -> tauri::Result<()> {
+pub fn open_monitor_windows<R: Runtime>(app: &AppHandle<R>, monitor_names: &[String], hide_from_capture: bool) -> tauri::Result<()> {
     let monitors = app.available_monitors()?;
-    let targets: Vec<_> = monitor_names
+    let mut targets: Vec<_> = monitor_names
         .iter()
         .filter_map(|n| monitors.iter().find(|m| m.name() == Some(n)))
+        .cloned()
         .collect();
+    if targets.is_empty() {
+        targets.extend(app.primary_monitor()?);
+    }
 
     for (label, w) in app.webview_windows() {
         if mon_index(&label).is_some_and(|i| i >= targets.len()) {
@@ -77,18 +81,22 @@ pub fn open_monitor_windows(app: &AppHandle, monitor_names: &[String], hide_from
     Ok(())
 }
 
-pub fn show_monitor_windows(app: &AppHandle) {
+pub fn monitor_window_count<R: Runtime>(app: &AppHandle<R>) -> usize {
+    app.webview_windows().keys().filter(|l| mon_index(l).is_some()).count()
+}
+
+pub fn show_monitor_windows<R: Runtime>(app: &AppHandle<R>) {
     for_each_monitor_window(app, SW_SHOWNOACTIVATE);
 }
 
 /// Call after `player://end` has cleared the page and it had a frame to render (~100 ms),
 /// otherwise the next show can flash the last frame of the previous screamer.
-pub fn hide_monitor_windows(app: &AppHandle) {
+pub fn hide_monitor_windows<R: Runtime>(app: &AppHandle<R>) {
     for_each_monitor_window(app, SW_HIDE);
 }
 
 // Win32 directly: tao's show() would use SW_SHOW and may activate the window.
-fn for_each_monitor_window(app: &AppHandle, cmd: SHOW_WINDOW_CMD) {
+fn for_each_monitor_window<R: Runtime>(app: &AppHandle<R>, cmd: SHOW_WINDOW_CMD) {
     for (label, w) in app.webview_windows() {
         if mon_index(&label).is_some()
             && let Ok(hwnd) = hwnd(&w)
@@ -100,7 +108,7 @@ fn for_each_monitor_window(app: &AppHandle, cmd: SHOW_WINDOW_CMD) {
     }
 }
 
-pub(crate) fn hwnd(w: &WebviewWindow) -> tauri::Result<HWND> {
+fn hwnd<R: Runtime>(w: &WebviewWindow<R>) -> tauri::Result<HWND> {
     Ok(HWND(w.hwnd()?.0))
 }
 

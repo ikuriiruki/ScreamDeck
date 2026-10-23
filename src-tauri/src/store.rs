@@ -1,17 +1,20 @@
 use crate::model::{Library, MediaKind, ScreamSet, Screamer, Settings, Sound};
+use serde::Serialize;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "state", rename_all = "camelCase")]
 pub enum DataDirStatus {
     Ok,
     Unavailable { path: PathBuf },
     Corrupt { backup: PathBuf },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum DirState {
     HasLibrary,
     Empty,
