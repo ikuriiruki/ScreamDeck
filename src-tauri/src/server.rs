@@ -204,9 +204,11 @@ fn in_use(port: u16) -> bool {
 /// Replaces the running server, if any. Every bind failure (in use, or a port Windows reserves)
 /// is `PortBusy`: the remedy is the same, another port.
 pub async fn start<R: Runtime>(app: AppHandle<R>, port: u16) -> ServerStatus {
-    if let Some(old) = app.state::<AppState>().server_task.lock().unwrap().take() {
+    let old = app.state::<AppState>().server_task.lock().unwrap().take();
+    if let Some(old) = old {
         // ponytail: the old server's open connections (SSE) live on until their clients drop them.
         old.abort();
+        let _ = old.await; // the listener is closed once the task is gone
     }
     if in_use(port) {
         return ServerStatus::PortBusy { port };
@@ -387,9 +389,53 @@ mod tests {
         assert!(in_use(a));
         let b = find_free_port(a.saturating_add(1)).unwrap();
         assert!(matches!(start(app.handle().clone(), b).await, ServerStatus::Running { port: p } if p == b));
-        tokio::time::sleep(Duration::from_millis(100)).await;
         assert!(!in_use(a));
-        app.state::<AppState>().server_task.lock().unwrap().take().unwrap().abort();
+        stop_server(&app).await;
+    }
+
+    async fn stop_server(app: &App<MockRuntime>) {
+        let task = app.state::<AppState>().server_task.lock().unwrap().take().unwrap();
+        task.abort();
+        let _ = task.await;
+    }
+
+    fn set_port(app: &App<MockRuntime>, port: u16) {
+        app.state::<AppState>().store.lock().unwrap().settings.api_port = port;
+    }
+
+    fn server_status(app: &App<MockRuntime>) -> ServerStatus {
+        app.state::<AppState>().server.lock().unwrap().clone()
+    }
+
+    #[tokio::test]
+    async fn pick_free_port_recovers_when_the_busy_port_was_freed() {
+        let (_dir, app) = app_with(Library::default());
+        let busy = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = busy.local_addr().unwrap().port();
+        set_port(&app, port);
+        runtime::restart_server(app.handle()).await;
+        assert!(matches!(server_status(&app), ServerStatus::PortBusy { port: p } if p == port));
+        drop(busy);
+        assert_eq!(runtime::pick_free_port(app.handle()).await, Ok(port));
+        assert!(matches!(server_status(&app), ServerStatus::Running { port: p } if p == port));
+        stop_server(&app).await;
+    }
+
+    #[tokio::test]
+    async fn overlapping_restarts_leave_one_server_on_the_latest_port() {
+        let (_dir, app) = app_with(Library::default());
+        let a = find_free_port(40100).unwrap();
+        set_port(&app, a);
+        runtime::restart_server(app.handle()).await;
+        assert!(in_use(a));
+        let b = find_free_port(a.saturating_add(1)).unwrap();
+        set_port(&app, b);
+        tokio::join!(runtime::restart_server(app.handle()), runtime::restart_server(app.handle()));
+        assert!(matches!(server_status(&app), ServerStatus::Running { port: p } if p == b));
+        assert!(in_use(b));
+        assert!(!in_use(a));
+        stop_server(&app).await;
+        assert!(!in_use(b));
     }
 
     #[test]
@@ -398,6 +444,6 @@ mod tests {
         let port = busy.local_addr().unwrap().port();
         let free = find_free_port(port).unwrap();
         assert_ne!(free, port);
-        assert!((port..=port + 100).contains(&free));
+        assert!((port..=port.saturating_add(100)).contains(&free));
     }
 }

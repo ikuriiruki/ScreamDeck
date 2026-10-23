@@ -64,6 +64,8 @@ pub struct AppState {
     pub overlay_tx: broadcast::Sender<OverlayEvent>,
     pub server: Mutex<ServerStatus>,
     pub server_task: Mutex<Option<JoinHandle<()>>>,
+    /// Held across a whole restart: overlapping restarts would each bind and orphan a server.
+    server_restart: tokio::sync::Mutex<()>,
     pub hotkey_error: Mutex<Option<String>>,
     /// Asset-protocol scope for media/ and thumbs/ could not be set: windows can't load files.
     pub media_error: Mutex<Option<String>>,
@@ -79,6 +81,7 @@ impl AppState {
             overlay_tx: broadcast::channel(64).0,
             server: Mutex::new(ServerStatus::Stopped),
             server_task: Mutex::default(),
+            server_restart: tokio::sync::Mutex::const_new(()),
             hotkey_error: Mutex::default(),
             media_error: Mutex::default(),
             show: Mutex::default(),
@@ -214,7 +217,7 @@ pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) -> Result<
         let _ = tray.set_menu(Some(menu));
     }
     if new.api_port != old.api_port {
-        restart_server(app);
+        spawn_restart_server(app);
     }
     let _ = app.emit("app://settings", &new);
     emit_status(app);
@@ -429,18 +432,42 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
     }
     register_hotkey(app, &settings.stop_hotkey);
     reload_library(app, settings.restore_enabled_sets);
-    restart_server(app);
+    spawn_restart_server(app);
 }
 
-/// (Re)binds the server to `api_port`; the outcome reaches the UI via `app://status`.
-pub fn restart_server<R: Runtime>(app: &AppHandle<R>) {
+fn spawn_restart_server<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
-    spawn(async move {
-        let port = app.state::<AppState>().store.lock().unwrap().settings.api_port;
-        let status = crate::server::start(app.clone(), port).await;
-        *app.state::<AppState>().server.lock().unwrap() = status;
-        emit_status(&app);
-    });
+    spawn(async move { restart_server(&app).await });
+}
+
+/// (Re)binds the server to the current `api_port` unless it already runs there; the outcome
+/// reaches the UI via `app://status`. Restarts run one at a time and the last port set wins.
+pub async fn restart_server<R: Runtime>(app: &AppHandle<R>) {
+    let st = app.state::<AppState>();
+    let _one_at_a_time = st.server_restart.lock().await;
+    let port = st.store.lock().unwrap().settings.api_port;
+    if matches!(*st.server.lock().unwrap(), ServerStatus::Running { port: p } if p == port) {
+        return;
+    }
+    let status = crate::server::start(app.clone(), port).await;
+    *st.server.lock().unwrap() = status;
+    emit_status(app);
+}
+
+/// Saves the first free port from the current one up and (re)starts the server there. Always
+/// restarts: after `PortBusy` the other program may have quit, so the free port can be the same one.
+pub async fn pick_free_port<R: Runtime>(app: &AppHandle<R>) -> Result<u16, String> {
+    let st = app.state::<AppState>();
+    let from = st.store.lock().unwrap().settings.api_port;
+    let port = crate::server::find_free_port(from).ok_or("no free port")?;
+    let saved = {
+        let mut store = st.store.lock().unwrap();
+        store.settings.api_port = port;
+        let _ = app.emit("app://settings", &store.settings);
+        store.save_settings()
+    };
+    restart_server(app).await;
+    saved.map(|_| port).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
