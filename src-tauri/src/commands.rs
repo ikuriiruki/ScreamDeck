@@ -1,3 +1,4 @@
+use crate::bundle::{self, ImportPreview};
 use crate::model::{Id, Library, MediaKind, ScreamSet, Screamer, Settings, Target};
 use crate::monitors::{self, MonitorInfo};
 use crate::player::Source;
@@ -194,4 +195,21 @@ pub fn retry_data_dir(app: AppHandle) {
 #[tauri::command]
 pub async fn pick_free_port(app: AppHandle) -> CmdResult<u16> {
     runtime::pick_free_port(&app).await
+}
+
+#[tauri::command]
+pub async fn export_bundle(app: AppHandle, path: PathBuf, set_ids: Vec<Id>, screamer_ids: Vec<Id>) -> CmdResult {
+    bundle::export(&store(&app), &path, &set_ids, &screamer_ids).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn inspect_bundle(app: AppHandle, path: PathBuf) -> CmdResult<ImportPreview> {
+    bundle::inspect(&path, &store(&app)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn import_bundle(app: AppHandle, path: PathBuf, copy_suffix: String) -> CmdResult<ImportPreview> {
+    let r = bundle::import(&path, &mut store(&app), &copy_suffix);
+    runtime::on_library_changed(&app);
+    r.map_err(|e| e.to_string())
 }

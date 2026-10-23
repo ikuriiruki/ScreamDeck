@@ -1,3 +1,4 @@
+mod bundle;
 mod commands;
 mod model;
 mod monitors;
@@ -98,6 +99,9 @@ pub fn run() {
             commands::change_data_dir,
             commands::retry_data_dir,
             commands::pick_free_port,
+            commands::export_bundle,
+            commands::inspect_bundle,
+            commands::import_bundle,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

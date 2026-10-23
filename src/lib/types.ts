@@ -91,8 +91,9 @@ export interface MonitorInfo {
   primary: boolean;
 }
 
-// No Rust counterpart yet (set import/export is a later task); placeholder shape.
 export interface ImportPreview {
-  screamers: Screamer[];
-  sets: ScreamSet[];
+  newScreamers: number;
+  skippedScreamers: number;
+  sets: number;
+  totalBytes: number;
 }
