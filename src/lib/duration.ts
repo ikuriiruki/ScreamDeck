@@ -36,3 +36,9 @@ export function parseSeconds(text: string): number | null {
   const ms = Math.round(Number(s) * 10) * 100;
   return ms > 0 ? ms : null;
 }
+
+/** How long a show of this screamer lasts; null when it has no length (by sound, but no sound). */
+export function showDurationMs(s: Screamer): number | null {
+  if (s.duration.mode === "custom") return s.duration.ms;
+  return s.sound.mode === "file" ? s.sound.durationMs : s.sound.mode === "fromVideo" ? s.media.durationMs : null;
+}

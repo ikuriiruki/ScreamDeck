@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { stop, updateSettings, useSettings } from "../lib/api";
+import { stop, updateSettings, useLibrary, useSettings, useStatus } from "../lib/api";
 import type { Settings } from "../lib/types";
-import { BottomNav, Button, Segmented, SubScreen, TabScreen, type Tab } from "../ui";
+import { SetDetail } from "../pages/SetDetail";
+import { Sets, type Notify } from "../pages/Sets";
+import { BottomNav, Button, Segmented, SubScreen, TabScreen, Toasts, type Tab, type Toast } from "../ui";
 import i18n, { languageOf, type Language } from "./i18n";
 import { applyTheme } from "./theme";
 
@@ -11,7 +13,11 @@ type Screen = { tab: Tab; sub?: { kind: "set" | "screamer"; id: string | null } 
 export default function App() {
   const { t } = useTranslation();
   const settings = useSettings();
+  const library = useLibrary();
+  const status = useStatus();
   const [screen, setScreen] = useState<Screen>({ tab: "sets" });
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const notify: Notify = useCallback((message, tone) => setToasts((ts) => [...ts, { id: crypto.randomUUID(), message, tone }]), []);
 
   const theme = settings?.theme ?? "system";
   useEffect(() => applyTheme(theme), [theme]);
@@ -24,7 +30,9 @@ export default function App() {
   return (
     <>
       <div className="backdrop-k" />
-      {screen.sub ? (
+      {screen.sub?.kind === "set" && screen.sub.id ? (
+        library && status && <SetDetail id={screen.sub.id} library={library} status={status} notify={notify} onBack={() => setScreen({ tab: screen.tab })} />
+      ) : screen.sub ? (
         <SubScreen title="" onBack={() => setScreen({ tab: screen.tab })}>{null}</SubScreen>
       ) : (
         <TabScreen
@@ -32,9 +40,13 @@ export default function App() {
           action={<Button variant="accent" icon="stop" onClick={() => void stop()}>{t("stop")}</Button>}
           nav={<BottomNav active={screen.tab} onChange={(tab) => setScreen({ tab })} />}
         >
+          {screen.tab === "sets" && library && status && (
+            <Sets library={library} status={status} notify={notify} onOpen={(id) => setScreen({ tab: "sets", sub: { kind: "set", id } })} />
+          )}
           {screen.tab === "settings" && settings && <LookSettings settings={settings} language={language} />}
         </TabScreen>
       )}
+      <Toasts items={toasts} onDismiss={(id) => setToasts((ts) => ts.filter((x) => x.id !== id))} dismissLabel={t("dismiss")} />
     </>
   );
 }

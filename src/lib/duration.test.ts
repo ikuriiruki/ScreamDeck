@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Screamer } from "./types";
-import { durationMarks, initialCustomDuration, parseSeconds, snapDuration } from "./duration";
+import { durationMarks, initialCustomDuration, parseSeconds, showDurationMs, snapDuration } from "./duration";
 
 const video: Screamer = {
   id: "a",
@@ -45,4 +45,11 @@ test("parseSeconds rejects empty and junk", () => {
   expect(parseSeconds("3s")).toBeNull();
   expect(parseSeconds("-1")).toBeNull();
   expect(parseSeconds("0")).toBeNull();
+});
+
+test("show duration: custom, by sound file, from video, none", () => {
+  expect(showDurationMs({ ...video, duration: { mode: "custom", ms: 1500 } })).toBe(1500);
+  expect(showDurationMs({ ...video, sound: { mode: "file", file: "s.mp3", durationMs: 5100 } })).toBe(5100);
+  expect(showDurationMs({ ...video, sound: { mode: "fromVideo" } })).toBe(3200);
+  expect(showDurationMs(image)).toBeNull();
 });

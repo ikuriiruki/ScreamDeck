@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button } from "../atoms/Button";
 
 /** Native modal <dialog>: focus trap, Escape and the top layer come from the browser; focus starts on cancel. */
-export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, danger, busy, onConfirm, onCancel }: {
+export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, danger, busy, confirmDisabled, onConfirm, onCancel }: {
   open: boolean;
   title: string;
   body?: ReactNode;
@@ -10,6 +10,8 @@ export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, da
   cancelLabel: string;
   danger?: boolean;
   busy?: boolean;
+  /** Nothing to confirm yet (still loading, or failed). */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -34,7 +36,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, da
       {body && <div className="mt-2 text-[15px] text-ink-2">{body}</div>}
       <div className="mt-5 flex flex-wrap justify-end gap-2">
         <Button variant="soft" onClick={onCancel} disabled={busy}>{cancelLabel}</Button>
-        <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} loading={busy}>{confirmLabel}</Button>
+        <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} loading={busy} disabled={confirmDisabled}>{confirmLabel}</Button>
       </div>
     </dialog>
   );

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import type { DirState, ImportPreview, Library, MediaKind, MonitorInfo, ScreamSet, Screamer, Settings, Status, Target } from "./types";
@@ -18,6 +18,8 @@ export const importMedia = (path: string) => invoke<ImportedMedia>("import_media
 export const importSound = (path: string) => invoke<string>("import_sound", { path });
 /** Drops media copied for a draft that was never saved. */
 export const discardMedia = (files: string[]) => invoke<void>("discard_media", { files });
+/** `thumb` is relative to the data folder (Status.dataPath). */
+export const thumbUrl = (dataPath: string, thumb: string | null) => (thumb ? convertFileSrc(`${dataPath}/${thumb}`) : null);
 export const saveThumbnail = (id: string, bytes: Uint8Array) => invoke<string>("save_thumbnail", { id, bytes: Array.from(bytes) });
 
 export const saveSet = (set: ScreamSet) => invoke<ScreamSet>("save_set", { set });

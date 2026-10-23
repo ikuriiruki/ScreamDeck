@@ -3,12 +3,89 @@
   "stop": "Stop",
   "back": "Back",
   "dismiss": "Dismiss",
+  "cancel": "Cancel",
   "copy": { "action": "Copy", "done": "Copied" },
   "weight": { "label": "Weight", "less": "Less", "more": "More" },
   "duration": { "label": "Duration", "seconds": "Duration, seconds" },
-  "units": { "seconds": "{{value}} s", "secondsShort": "s" },
+  "units": { "seconds": "{{value}} s", "secondsShort": "s", "minShort": "min" },
   "hotkey": { "change": "Change shortcut", "press": "Press a shortcut…" },
   "monitors": { "label": "Monitors", "screen": "Monitor {{n}}", "primary": "primary" },
+  "kinds": { "image": "image", "gif": "GIF", "video": "video" },
+  "count": {
+    "screamers_one": "{{count}} screamer", "screamers_other": "{{count}} screamers",
+    "sets_one": "{{count}} set", "sets_other": "{{count}} sets"
+  },
+  "sets": {
+    "title": "Sets",
+    "import": "Import .zip",
+    "new": "New",
+    "newName": "New set",
+    "empty": "No sets yet — create the first one",
+    "noItems": "no screamers",
+    "verdict": {
+      "running_one": "set is running", "running_other": "sets are running",
+      "runningSub": "screamers will appear at random moments",
+      "off": "Screamers are off",
+      "offSub": "turn on a set and screamers will start appearing"
+    },
+    "portBusy": {
+      "title": "Port {{port}} is taken by another program — the OBS overlay and the API don’t work",
+      "action": "Pick a free port",
+      "done": "Update the link in OBS: http://127.0.0.1:{{port}}/overlay"
+    },
+    "dataDir": {
+      "unavailable": "The data folder is unavailable",
+      "retry": "Retry",
+      "choose": "Choose another",
+      "corrupt": "The library was damaged — started a new one",
+      "corruptSub": "Copy of the old one: {{backup}}"
+    },
+    "mediaError": "Screamer files can’t be loaded — shows won’t work",
+    "confirmEnable": {
+      "title": "Turn on one more set?",
+      "body": "Already on: “{{names}}”. Are you sure you want to turn on “{{name}}” too?",
+      "separator": "”, “",
+      "confirm": "Turn on"
+    }
+  },
+  "set": {
+    "enabled": "Set is on",
+    "name": "Name",
+    "min": "Min. interval",
+    "max": "Max. interval",
+    "minutes": "{{field}}, minutes",
+    "seconds": "{{field}}, seconds",
+    "swapped": "The minimum was above the maximum — the values were swapped",
+    "clamped": "The interval is 1 second to 24 hours",
+    "api": "Available via API",
+    "apiHint": "Stream Deck and other programs can trigger and turn on this set",
+    "items": "Screamers · chance",
+    "add": "Add",
+    "remove": "Remove from set",
+    "empty": "No screamers in this set yet",
+    "random": "Random",
+    "export": "Export",
+    "exported": "Set exported",
+    "more": "More",
+    "delete": "Delete set",
+    "deleteConfirm": { "title": "Delete set “{{name}}”?", "body": "The screamers stay in the library.", "confirm": "Delete" }
+  },
+  "addScreamers": {
+    "title": "Add screamers",
+    "confirm": "Add",
+    "none": "Every screamer in the library is already in this set",
+    "emptyLibrary": "The library has no screamers yet — add them on the Screamers tab"
+  },
+  "import": {
+    "title": "Import",
+    "reading": "Reading the archive…",
+    "will": "Will be added: {{screamers}}, {{sets}}",
+    "skipped": "Skipped (already there): {{count}}",
+    "action": "Import",
+    "done": "Import finished",
+    "copySuffix": " (copy)",
+    "failed": "Couldn’t read the archive: {{error}}"
+  },
   "settings": {
     "language": "Language",
     "theme": { "label": "Theme", "light": "Light", "dark": "Dark", "system": "System" }
