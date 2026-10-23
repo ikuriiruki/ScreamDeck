@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Screamer } from "./types";
-import { durationMarks, initialCustomDuration, snapDuration } from "./duration";
+import { durationMarks, initialCustomDuration, parseSeconds, snapDuration } from "./duration";
 
 const video: Screamer = {
   id: "a",
@@ -32,3 +32,17 @@ test("marks list video and sound file in order", () =>
     { ms: 3200, label: "video" },
   ]));
 test("image without sound has no marks", () => expect(durationMarks(image)).toEqual([]));
+
+test("parseSeconds takes comma or dot", () => {
+  expect(parseSeconds("3,2")).toBe(3200);
+  expect(parseSeconds(" 3.2 ")).toBe(3200);
+  expect(parseSeconds("4")).toBe(4000);
+  expect(parseSeconds("1.25")).toBe(1300);
+});
+test("parseSeconds rejects empty and junk", () => {
+  expect(parseSeconds("")).toBeNull();
+  expect(parseSeconds(".")).toBeNull();
+  expect(parseSeconds("3s")).toBeNull();
+  expect(parseSeconds("-1")).toBeNull();
+  expect(parseSeconds("0")).toBeNull();
+});

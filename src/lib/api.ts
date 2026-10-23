@@ -57,12 +57,15 @@ function useLive<T>(command: string, event: string): T | null {
       if (alive) setValue(e.payload);
     });
     // subscribe first, so a change between the fetch and the subscription is not lost
-    void unlisten.then(() => invoke<T>(command)).then((v) => {
-      if (alive && !pushed) setValue(v);
-    });
+    unlisten
+      .then(() => invoke<T>(command))
+      .then((v) => {
+        if (alive && !pushed) setValue(v);
+      })
+      .catch((e) => console.error(`${command} / ${event}:`, e));
     return () => {
       alive = false;
-      void unlisten.then((f) => f());
+      unlisten.then((f) => f()).catch(() => {}); // a failed listen was already logged above
     };
   }, [command, event]);
   return value;

@@ -5,8 +5,8 @@
   "dismiss": "Dismiss",
   "copy": { "action": "Copy", "done": "Copied" },
   "weight": { "label": "Weight", "less": "Less", "more": "More" },
-  "duration": { "label": "Duration" },
-  "units": { "seconds": "{{value}} s" },
+  "duration": { "label": "Duration", "seconds": "Duration, seconds" },
+  "units": { "seconds": "{{value}} s", "secondsShort": "s" },
   "hotkey": { "change": "Change shortcut", "press": "Press a shortcut…" },
   "monitors": { "label": "Monitors", "screen": "Monitor {{n}}", "primary": "primary" },
   "settings": {

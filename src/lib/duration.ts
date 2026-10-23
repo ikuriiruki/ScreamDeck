@@ -28,3 +28,11 @@ export function snapDuration(ms: number, marks: number[], disabled: boolean, thr
 export function initialCustomDuration(s: Screamer): number {
   return s.sound.mode === "file" ? s.sound.durationMs : (s.media.durationMs ?? 3000);
 }
+
+/** Typed seconds («3,2» or «3.2») to whole tenths in ms; null for empty or not a positive number. */
+export function parseSeconds(text: string): number | null {
+  const s = text.trim().replace(",", ".");
+  if (!/^\d*\.?\d*$/.test(s) || !/\d/.test(s)) return null;
+  const ms = Math.round(Number(s) * 10) * 100;
+  return ms > 0 ? ms : null;
+}

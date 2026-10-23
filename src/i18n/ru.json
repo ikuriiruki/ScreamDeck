@@ -5,8 +5,8 @@
   "dismiss": "Закрыть",
   "copy": { "action": "Скопировать", "done": "Скопировано" },
   "weight": { "label": "Вес", "less": "Меньше", "more": "Больше" },
-  "duration": { "label": "Длительность" },
-  "units": { "seconds": "{{value}} с" },
+  "duration": { "label": "Длительность", "seconds": "Длительность, секунды" },
+  "units": { "seconds": "{{value}} с", "secondsShort": "с" },
   "hotkey": { "change": "Изменить сочетание", "press": "Нажмите сочетание…" },
   "monitors": { "label": "Мониторы", "screen": "Монитор {{n}}", "primary": "основной" },
   "settings": {
