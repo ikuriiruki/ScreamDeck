@@ -1,5 +1,5 @@
 use crate::model::{Id, ScreamSet, Screamer, Sound};
-use crate::store::Store;
+use crate::store::{DataDirStatus, Store};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
@@ -190,7 +190,7 @@ fn plan(path: &Path, store: &Store, limit: u64) -> Result<Plan, BundleError> {
         if classify_entry(&name)? == EntryKind::Manifest {
             manifest_at = Some(i);
         }
-        declared += e.size();
+        declared = u64::saturating_add(declared, e.size());
         index.insert(name, i);
     }
     let mut used = 0;
@@ -230,7 +230,10 @@ fn plan(path: &Path, store: &Store, limit: u64) -> Result<Plan, BundleError> {
             }
         }
         match index.get(&format!("thumbs/{}.jpg", s.id)) {
-            Some(&i) => thumbs.push((s.id.clone(), i)),
+            Some(&i) => {
+                s.thumb = Some(format!("thumbs/{}.jpg", s.id)); // never trust the manifest's value
+                thumbs.push((s.id.clone(), i));
+            }
             None => s.thumb = None,
         }
         known.insert(s.id.clone());
@@ -269,6 +272,9 @@ fn write_new(p: &Path) -> io::Result<File> {
 }
 
 fn import_limited(path: &Path, store: &mut Store, copy_suffix: &str, limit: u64) -> Result<ImportPreview, BundleError> {
+    if !matches!(store.data_dir_status, DataDirStatus::Ok) {
+        return Err(BundleError::Invalid("data folder is unavailable".into()));
+    }
     let mut p = plan(path, store, limit)?;
     let mut written: Vec<PathBuf> = Vec::new();
     let r = write_all(&mut p, store, &mut written, copy_suffix, limit);
@@ -476,6 +482,29 @@ mod tests {
         let f = &st.library.screamers[0].media.file;
         assert_ne!(f, "a.png");
         assert_eq!(fs::read(st.media_dir().join(f)).unwrap(), b"MINE");
+    }
+
+    #[test]
+    fn manifest_thumb_is_normalized() {
+        let (d, mut st) = store();
+        let evil = Screamer { thumb: Some("../library.json".into()), ..scr("a", "a.png") };
+        let plain = Screamer { thumb: Some("../library.json".into()), ..scr("b", "b.png") };
+        let m = manifest(vec![evil, plain], vec![]);
+        let z = zip_of(d.path(), &m, &[("media/a.png", b"A"), ("media/b.png", b"B"), ("thumbs/a.jpg", b"J")]);
+        import(&z, &mut st, "").unwrap();
+        assert_eq!(st.library.screamers[0].thumb.as_deref(), Some("thumbs/a.jpg"));
+        assert_eq!(st.library.screamers[1].thumb, None);
+    }
+
+    #[test]
+    fn unavailable_data_dir_refuses_import() {
+        let (d, mut st) = store();
+        st.data_dir_status = DataDirStatus::Unavailable { path: d.path().to_path_buf() };
+        let m = manifest(vec![scr("a", "a.png")], vec![]);
+        let z = zip_of(d.path(), &m, &[("media/a.png", b"A")]);
+        assert!(import(&z, &mut st, "").is_err());
+        assert_eq!(count(&st.media_dir()), 0);
+        assert!(st.library.screamers.is_empty());
     }
 
     #[test]
