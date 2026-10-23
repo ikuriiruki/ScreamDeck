@@ -1,0 +1,163 @@
+@import "tailwindcss";
+@source "../";
+/* Korai · «Тёплая терракота» (xray-checker/DESIGN.md). Colours live only here; components use the theme below. */
+@import "@fontsource-variable/onest";
+
+:root {
+  --font: "Onest Variable", system-ui, sans-serif;
+
+  --paper: #F7F3ED;
+  --surface: #FFFDFC;
+  --surface-2: #F1EAE1;
+  --ink: #2B2723;
+  --ink-2: #746B62;
+  --ink-3: #B3A89C;
+  --acc: #C65D3B;
+  --acc-ink: #A84B2D;
+  --acc-soft: #F4DDD3;
+  --on-acc: #FFFDFC;
+
+  --ok: #4F8A65;
+  --ok-ink: #3E7052;
+  --warn: #C58A2A;
+  --warn-ink: #93651C;
+  --err: #C94F45;
+  --err-ink: #B4433A;
+
+  /* verdict: calm / alert / down; muted uses surface-2 */
+  --calm-bg: #DDE9DF;
+  --calm-num: #4F8A65;
+  --calm-fg: #2B2723;
+  --calm-sub: #46604F;
+  --alert-bg: #DB9431;
+  --alert-fg: #2B2723;
+  --alert-num: rgb(43 39 35 / .72);
+  --down-bg: #B4433A;
+  --down-fg: #FFFDFC;
+  --down-num: rgb(255 253 252 / .7);
+
+  --glow-a: rgb(198 93 59 / .26);
+  --glow-b: rgb(198 93 59 / .18);
+  --arc: rgb(255 255 255 / .85);
+  --scrim: rgb(43 39 35 / .32);
+  --lift: rgb(43 39 35 / .22);
+
+  color-scheme: light;
+}
+
+.dark {
+  --paper: #171411;
+  --surface: #211D19;
+  --surface-2: #2B2621;
+  --ink: #F7F1E8;
+  --ink-2: #B5A99C;
+  --ink-3: #6B6158;
+  --acc: #D97757;
+  --acc-ink: #E8906F;
+  --acc-soft: #3B2A22;
+  --on-acc: #171411;
+
+  --ok: #6FAE86;
+  --ok-ink: #7FBF95;
+  --warn: #E0A84A;
+  --warn-ink: #E8A24A;
+  --err: #E07A6E;
+  --err-ink: #EC8A7C;
+
+  --calm-bg: #1F2B24;
+  --calm-num: #7FBF95;
+  --calm-fg: #F7F1E8;
+  --calm-sub: #B5C9BB;
+
+  --glow-a: rgb(217 119 87 / .16);
+  --glow-b: rgb(217 119 87 / .10);
+  --arc: rgb(247 241 232 / .07);
+  --scrim: rgb(0 0 0 / .5);
+  --lift: rgb(0 0 0 / .45);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: var(--font);
+
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-acc: var(--acc);
+  --color-acc-ink: var(--acc-ink);
+  --color-acc-soft: var(--acc-soft);
+  --color-on-acc: var(--on-acc);
+  --color-ok: var(--ok);
+  --color-ok-ink: var(--ok-ink);
+  --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
+  --color-err: var(--err);
+  --color-err-ink: var(--err-ink);
+  --color-calm-bg: var(--calm-bg);
+  --color-calm-num: var(--calm-num);
+  --color-calm-fg: var(--calm-fg);
+  --color-calm-sub: var(--calm-sub);
+  --color-alert-bg: var(--alert-bg);
+  --color-alert-fg: var(--alert-fg);
+  --color-alert-num: var(--alert-num);
+  --color-down-bg: var(--down-bg);
+  --color-down-fg: var(--down-fg);
+  --color-down-num: var(--down-num);
+  --color-scrim: var(--scrim);
+
+  --radius-field: 30px;
+  --radius-row: 20px;
+
+  --text-caption: 0.875rem;
+  --text-caption--line-height: 1.35;
+  --text-label: 0.9375rem;
+  --text-label--line-height: 1.25;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.015em;
+  --text-headline: clamp(1.75rem, 4.2vw, 3rem);
+  --text-headline--line-height: 1.02;
+  --text-headline--letter-spacing: -0.025em;
+  --text-display: clamp(4.5rem, 11vw, 7.5rem);
+  --text-display--line-height: 0.82;
+  --text-display--letter-spacing: -0.04em;
+
+  --ease-k: cubic-bezier(.16, 1, .3, 1);
+  --shadow-lift: 0 12px 32px var(--lift);
+}
+
+/* Figma cover: paper, two terracotta corner glows, two hairline arcs */
+@utility backdrop-k {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background:
+    radial-gradient(42vmax 32vmax at 6% -4%, var(--glow-a), transparent 70%),
+    radial-gradient(42vmax 32vmax at 102% 104%, var(--glow-b), transparent 70%),
+    var(--paper);
+  &::before, &::after { content: ""; position: absolute; width: 64vmax; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--arc); }
+  &::before { left: -30vmax; top: -38vmax; }
+  &::after { right: -34vmax; bottom: -40vmax; }
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; scrollbar-color: var(--surface-2) transparent; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 16px/1.5 var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  ::selection { background: var(--acc); color: var(--on-acc); }
+  input, textarea { caret-color: var(--acc); }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

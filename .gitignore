@@ -1,3 +1,7 @@
 .superpowers/
 docs/superpowers/
 .impeccable/
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
