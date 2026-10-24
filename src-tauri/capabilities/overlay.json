@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "overlay",
+  "description": "Overlay windows on the PC monitors: player events, the ready ack and the status (data folder, preload list)",
+  "windows": ["mon-*"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "allow-get-status", "allow-player-ready"]
+}

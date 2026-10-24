@@ -100,6 +100,8 @@ pub struct Status {
     pub hotkey_error: Option<String>,
     pub media_error: Option<String>,
     pub version: String,
+    /// What `player://preload` last announced; a window that subscribed late catches up from here.
+    pub preload_files: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -206,7 +208,13 @@ pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) -> Result<
         result = result.and(monitors::open_monitor_windows(app, &new.monitors, new.hide_from_capture).map_err(|e| format!("monitor windows: {e}")));
     }
     // A key that didn't register leaves the old one working and saved; Status.hotkeyError says why.
-    if new.stop_hotkey != old.stop_hotkey && register_hotkey(app, &new.stop_hotkey, &old.stop_hotkey) {
+    if new.stop_hotkey == old.stop_hotkey {
+        // back to the key that works: the error was about another one
+        let mut err = st.hotkey_error.lock().unwrap();
+        if err.as_ref().is_some_and(|e| *e != new.stop_hotkey) {
+            *err = None;
+        }
+    } else if register_hotkey(app, &new.stop_hotkey, &old.stop_hotkey) {
         let mut store = st.store.lock().unwrap();
         store.settings.stop_hotkey = old.stop_hotkey.clone();
         new.stop_hotkey = old.stop_hotkey.clone();
@@ -236,17 +244,30 @@ pub fn reload_library<R: Runtime>(app: &AppHandle<R>, keep_enabled: bool) {
     {
         let st = app.state::<AppState>();
         let mut store = st.store.lock().unwrap();
-        if !keep_enabled && store.library.sets.iter().any(|s| s.enabled) {
-            store.library.sets.iter_mut().for_each(|s| s.enabled = false);
-            if let Err(e) = store.save_library() {
-                eprintln!("screamdeck: saving disabled sets failed: {e}");
-            }
+        if !keep_enabled {
+            turn_sets_off(&mut store);
         }
         let scope = app.asset_protocol_scope();
         let r = scope.allow_directory(store.media_dir(), true).and_then(|_| scope.allow_directory(store.thumbs_dir(), true));
         *st.media_error.lock().unwrap() = r.err().map(|e| e.to_string());
         let _ = app.emit("app://settings", &store.settings);
     }
+    on_library_changed(app);
+}
+
+fn turn_sets_off(store: &mut Store) {
+    if store.library.sets.iter().any(|s| s.enabled) {
+        store.library.sets.iter_mut().for_each(|s| s.enabled = false);
+        if let Err(e) = store.save_library() {
+            eprintln!("screamdeck: saving disabled sets failed: {e}");
+        }
+    }
+}
+
+/// Turns every set off (saved) and stops their timers; a timer already waiting on the store
+/// finds no `SetRun` and shows nothing.
+pub fn turn_all_sets_off<R: Runtime>(app: &AppHandle<R>) {
+    turn_sets_off(&mut app.state::<AppState>().store.lock().unwrap());
     on_library_changed(app);
 }
 
@@ -277,6 +298,7 @@ fn bind_hotkey<R: Runtime>(app: &AppHandle<R>, hotkey: &str) -> Result<(), Strin
 }
 
 pub fn status<R: Runtime>(app: &AppHandle<R>) -> Status {
+    let preload_files = preload_files(app);
     let st = app.state::<AppState>();
     let store = st.store.lock().unwrap();
     Status {
@@ -287,6 +309,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Status {
         hotkey_error: st.hotkey_error.lock().unwrap().clone(),
         media_error: st.media_error.lock().unwrap().clone(),
         version: app.package_info().version.to_string(),
+        preload_files,
     }
 }
 
@@ -429,6 +452,8 @@ fn end_show<R: Runtime>(app: &AppHandle<R>, show_id: u64) {
     let app = app.clone();
     spawn(async move {
         sleep(HIDE_DELAY).await;
+        // the show took its files out of the players' caches; same list again refills them
+        emit_preload(&app);
         let a = app.clone();
         let _ = app.run_on_main_thread(move || {
             let st = a.state::<AppState>();
@@ -488,7 +513,7 @@ pub async fn pick_free_port<R: Runtime>(app: &AppHandle<R>) -> Result<u16, Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{DurationMode, Library, Screamer};
+    use crate::model::{DurationMode, Library, Media, ScreamSet, Screamer, SetItem};
     use tauri::async_runtime::block_on;
 
     fn recv(rx: &mut broadcast::Receiver<OverlayEvent>) -> OverlayEvent {
@@ -547,5 +572,57 @@ mod tests {
         assert!(matches!(of(1).as_slice(), ["prepare", "end"] | ["prepare", "play", "end"]), "{seen:?}");
         assert_eq!(of(2), ["prepare", "play"], "{seen:?}");
         assert!(app.state::<AppState>().show.lock().unwrap().as_ref().is_some_and(|s| s.id == 2));
+    }
+
+    fn app_with_running_set() -> (tempfile::TempDir, tauri::App<tauri::test::MockRuntime>) {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::load(dir.path().to_path_buf());
+        let a = Screamer { id: "a".into(), media: Media { file: "a.png".into(), ..Default::default() }, duration: DurationMode::Custom { ms: 100 }, ..Default::default() };
+        let set = ScreamSet { id: "s".into(), items: vec![SetItem { screamer_id: "a".into(), weight: 1 }], enabled: true, ..Default::default() };
+        store.library = Library { screamers: vec![a], sets: vec![set], ..Default::default() };
+        let app = tauri::test::mock_app();
+        app.manage(AppState::new(store));
+        on_library_changed(app.handle());
+        (dir, app)
+    }
+
+    #[test]
+    fn preload_list_is_in_status_and_resent_after_a_show() {
+        let (_dir, app) = app_with_running_set();
+        let h = app.handle();
+        assert_eq!(status(h).preload_files, ["a.png"]);
+        let mut rx = app.state::<AppState>().overlay_tx.subscribe();
+        request_show(h, "a", Target::Overlay, Source::Test).unwrap();
+        while !matches!(recv(&mut rx), OverlayEvent::End { .. }) {}
+        assert!(matches!(recv(&mut rx), OverlayEvent::Preload { files } if files == ["a.png"]));
+    }
+
+    #[test]
+    fn turning_all_sets_off_stops_their_timers() {
+        let (_dir, app) = app_with_running_set();
+        let st = app.state::<AppState>();
+        assert_eq!(st.sets.lock().unwrap().len(), 1);
+        turn_all_sets_off(app.handle());
+        assert!(st.sets.lock().unwrap().is_empty());
+        assert!(!st.store.lock().unwrap().library.sets[0].enabled);
+        assert!(matches!(request_from_set(app.handle(), "s", Target::Both, Source::Timer), Err(SetTriggerError::Empty)));
+    }
+
+    #[test]
+    fn keeping_the_working_hotkey_clears_another_keys_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = tauri::test::mock_app();
+        app.manage(AppState::new(Store::load(dir.path().to_path_buf())));
+        let st = app.state::<AppState>();
+        let settings = st.store.lock().unwrap().settings.clone();
+
+        *st.hotkey_error.lock().unwrap() = Some("Ctrl+F1".into());
+        apply_settings(app.handle(), &settings).unwrap();
+        assert_eq!(*st.hotkey_error.lock().unwrap(), None);
+
+        // the saved key itself is the broken one: the error stays
+        *st.hotkey_error.lock().unwrap() = Some(settings.stop_hotkey.clone());
+        apply_settings(app.handle(), &settings).unwrap();
+        assert_eq!(*st.hotkey_error.lock().unwrap(), Some(settings.stop_hotkey));
     }
 }

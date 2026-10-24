@@ -9,6 +9,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 const LIMIT: u64 = 1 << 30;
+const MANIFEST_LIMIT: u64 = 16 << 20;
 const MEDIA_EXT: &[&str] = &["gif", "png", "jpg", "jpeg", "webp", "mp4", "webm", "mp3", "ogg", "wav", "m4a"];
 
 #[derive(Debug)]
@@ -196,7 +197,7 @@ fn plan(path: &Path, store: &Store, limit: u64) -> Result<Plan, BundleError> {
     let mut used = 0;
     let mut buf = Vec::new();
     let at = manifest_at.ok_or_else(|| BundleError::Invalid("no manifest.json".into()))?;
-    read_capped(zip.by_index(at)?, &mut used, limit, &mut buf)?;
+    read_capped(zip.by_index(at)?, &mut used, limit.min(MANIFEST_LIMIT), &mut buf)?;
     let manifest: Manifest = serde_json::from_slice(&buf)?;
     if manifest.format > 1 {
         return Err(BundleError::Newer);
@@ -272,7 +273,8 @@ fn write_new(p: &Path) -> io::Result<File> {
 }
 
 fn import_limited(path: &Path, store: &mut Store, copy_suffix: &str, limit: u64) -> Result<ImportPreview, BundleError> {
-    if !matches!(store.data_dir_status, DataDirStatus::Ok) {
+    // a corrupt library was set aside and a new one started: that one takes imports like any other
+    if matches!(store.data_dir_status, DataDirStatus::Unavailable { .. }) {
         return Err(BundleError::Invalid("data folder is unavailable".into()));
     }
     let mut p = plan(path, store, limit)?;
@@ -329,7 +331,7 @@ fn write_all(p: &mut Plan, store: &mut Store, written: &mut Vec<PathBuf>, suffix
             set.id = uuid::Uuid::new_v4().to_string();
             set.name.push_str(suffix);
         }
-        store.upsert_set(set.clone());
+        store.upsert_set(set);
     }
     if let Err(e) = store.save_library() {
         store.library = backup;
@@ -392,7 +394,7 @@ mod tests {
         put_media(&src, "a.png", b"AAA");
         src.upsert_screamer(Screamer { thumb: Some("thumbs/a.jpg".into()), ..scr("a", "a.png") });
         src.save_thumbnail("a", b"JPG").unwrap();
-        src.upsert_set(set("s", &["a"]));
+        src.upsert_set(&mut set("s", &["a"]));
         let out = tempdir().unwrap();
         let z = out.path().join("o.zip");
         export(&src, &z, &["s".into()], &[]).unwrap();
@@ -460,7 +462,7 @@ mod tests {
     #[test]
     fn existing_set_is_imported_as_copy() {
         let (d, mut st) = store();
-        st.upsert_set(set("s", &[]));
+        st.upsert_set(&mut set("s", &[]));
         let m = manifest(vec![scr("a", "a.png")], vec![set("s", &["a", "ghost"])]);
         let z = zip_of(d.path(), &m, &[("media/a.png", b"A")]);
         import(&z, &mut st, " (копия)").unwrap();
@@ -505,6 +507,30 @@ mod tests {
         assert!(import(&z, &mut st, "").is_err());
         assert_eq!(count(&st.media_dir()), 0);
         assert!(st.library.screamers.is_empty());
+    }
+
+    #[test]
+    fn corrupt_data_dir_accepts_import() {
+        let (d, mut st) = store();
+        st.data_dir_status = DataDirStatus::Corrupt { backup: d.path().join("library.broken-1.json") };
+        let m = manifest(vec![scr("a", "a.png")], vec![]);
+        let z = zip_of(d.path(), &m, &[("media/a.png", b"A")]);
+        assert_eq!(import(&z, &mut st, "").unwrap().new_screamers, 1);
+        assert!(st.media_dir().join("a.png").exists());
+    }
+
+    #[test]
+    fn oversized_manifest_is_rejected() {
+        let (d, mut st) = store();
+        let p = d.path().join("big.zip");
+        let mut z = ZipWriter::new(File::create(&p).unwrap());
+        z.start_file("manifest.json", SimpleFileOptions::default()).unwrap();
+        z.write_all(b"{").unwrap();
+        z.write_all(&vec![b' '; (MANIFEST_LIMIT + 1) as usize]).unwrap();
+        z.write_all(b"}").unwrap();
+        z.finish().unwrap();
+        assert!(matches!(inspect(&p, &st), Err(BundleError::TooLarge)));
+        assert!(matches!(import(&p, &mut st, ""), Err(BundleError::TooLarge)));
     }
 
     #[test]

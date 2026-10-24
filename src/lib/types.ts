@@ -81,6 +81,8 @@ export interface Status {
   hotkeyError: string | null;
   mediaError: string | null;
   version: string;
+  /** Files the overlay windows should hold ready (what `player://preload` last sent). */
+  preloadFiles: string[];
 }
 
 export interface MonitorInfo {

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Show } from "../lib/types";
+import type { Show, Status } from "../lib/types";
 import { guessTag, planPlayback, type Tag } from "./playback";
 
 type El = HTMLImageElement | HTMLVideoElement | HTMLAudioElement;
@@ -123,8 +123,7 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
       const setPath = (p: string) => (dataPath = p);
       src = (file) => convertFileSrc(`${dataPath}/media/${file}`);
       ack = (showId) => void invoke("player_ready", { showId });
-      const status = await invoke<{ dataPath: string }>("get_status");
-      setPath(status.dataPath);
+      setPath((await invoke<Status>("get_status")).dataPath);
       const subs = await Promise.all([
         listen<{ dataPath: string }>("app://status", (e) => setPath(e.payload.dataPath)),
         listen<Show>("player://prepare", (e) => prepare(e.payload)),
@@ -132,8 +131,12 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
         listen<{ showId: number }>("player://end", (e) => onEnd(e.payload.showId)),
         listen<{ files: string[] }>("player://preload", (e) => preload(e.payload.files)),
       ]);
-      if (stopped) subs.forEach((u) => u());
-      else cleanups.push(...subs);
+      if (stopped) return subs.forEach((u) => u());
+      cleanups.push(...subs);
+      // the window opens after the core's first preload event went out: catch up now that we listen
+      const status = await invoke<Status>("get_status");
+      setPath(status.dataPath);
+      if (!stopped) preload(status.preloadFiles);
     })();
 
     return () => {

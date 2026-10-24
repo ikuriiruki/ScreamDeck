@@ -88,13 +88,14 @@ pub fn save_thumbnail(app: AppHandle, id: Id, bytes: Vec<u8>) -> CmdResult<Strin
     store(&app).save_thumbnail(&id, &bytes).map_err(|e| e.to_string())
 }
 
+/// `enabled` is not saved here (only `set_enabled` changes it); the stored value comes back.
 #[tauri::command]
 pub fn save_set(app: AppHandle, mut set: ScreamSet) -> CmdResult<ScreamSet> {
     if set.id.is_empty() {
         set.id = new_id();
+        set.enabled = false;
     }
-    let s = set.clone();
-    change_library(&app, |st| st.upsert_set(s))?;
+    change_library(&app, |st| st.upsert_set(&mut set))?;
     Ok(set)
 }
 
@@ -176,10 +177,11 @@ pub fn inspect_data_dir(path: PathBuf) -> DirState {
     Store::inspect_dir(&path)
 }
 
-/// Sets stop: the show ends and every set is turned off once the switch succeeded.
+/// The show ends and every set is turned off before anything is copied, so no show fires mid-switch.
 #[tauri::command]
 pub async fn change_data_dir(app: AppHandle, path: PathBuf, mov: bool) -> CmdResult {
     runtime::stop_all(&app);
+    runtime::turn_all_sets_off(&app);
     store(&app).change_data_dir(path, mov).map_err(|e| match e {
         // codes the UI translates
         StoreError::NotWritable => "notWritable".to_string(),

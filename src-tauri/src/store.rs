@@ -74,7 +74,8 @@ fn is_plain_name(n: &str) -> bool {
     !n.is_empty() && !n.contains(['/', '\\']) && !n.contains("..")
 }
 
-/// Reads `<dir>/library.json`; a corrupt file is renamed aside, never overwritten.
+/// Reads `<dir>/library.json`; a corrupt file is renamed aside, never overwritten
+/// (if it can't be renamed, the folder is `Unavailable` so nothing writes over it).
 fn read_library(dir: &Path) -> (Library, DataDirStatus) {
     let path = dir.join("library.json");
     let text = match fs::read_to_string(&path) {
@@ -87,8 +88,10 @@ fn read_library(dir: &Path) -> (Library, DataDirStatus) {
         Ok(lib) => (lib, DataDirStatus::Ok),
         Err(_) => {
             let backup = dir.join(format!("library.broken-{}.json", unix_now()));
-            let _ = fs::rename(&path, &backup);
-            (Library::default(), DataDirStatus::Corrupt { backup })
+            match fs::rename(&path, &backup) {
+                Ok(()) => (Library::default(), DataDirStatus::Corrupt { backup }),
+                Err(_) => (Library::default(), DataDirStatus::Unavailable { path: dir.to_path_buf() }),
+            }
         }
     }
 }
@@ -219,10 +222,14 @@ impl Store {
         }
     }
 
-    pub fn upsert_set(&mut self, s: ScreamSet) {
+    /// A stored set keeps its `enabled` (written back into `s`): only turning it on/off changes that.
+    pub fn upsert_set(&mut self, s: &mut ScreamSet) {
         match self.library.sets.iter_mut().find(|x| x.id == s.id) {
-            Some(x) => *x = s,
-            None => self.library.sets.push(s),
+            Some(x) => {
+                s.enabled = x.enabled;
+                *x = s.clone();
+            }
+            None => self.library.sets.push(s.clone()),
         }
     }
 
@@ -350,6 +357,33 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
+    fn corrupt_library_that_cannot_be_renamed_is_unavailable() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let d = tempdir().unwrap();
+        let path = d.path().join("library.json");
+        fs::write(&path, "{not json").unwrap();
+        // FILE_SHARE_READ only: readable, but the rename (needs delete access) fails
+        let _held = fs::OpenOptions::new().read(true).share_mode(1).open(&path).unwrap();
+        let s = Store::load(d.path().to_path_buf());
+        assert!(matches!(s.data_dir_status, DataDirStatus::Unavailable { .. }), "{:?}", s.data_dir_status);
+        s.save_library().unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "{not json");
+    }
+
+    #[test]
+    fn upsert_set_keeps_stored_enabled() {
+        let d = tempdir().unwrap();
+        let mut s = Store::load(d.path().to_path_buf());
+        s.upsert_set(&mut ScreamSet { id: "s".into(), enabled: true, ..Default::default() });
+        let mut edit = ScreamSet { id: "s".into(), name: "renamed".into(), enabled: false, ..Default::default() };
+        s.upsert_set(&mut edit);
+        assert!(edit.enabled);
+        assert!(s.library.sets[0].enabled);
+        assert_eq!(s.library.sets[0].name, "renamed");
+    }
+
+    #[test]
     fn unavailable_data_dir_writes_nothing() {
         let d = tempdir().unwrap();
         let gone = d.path().join("gone");
@@ -393,7 +427,7 @@ mod tests {
         fs::write(s.media_dir().join("b.png"), "x").unwrap();
         s.upsert_screamer(mk("a", "a.png"));
         s.upsert_screamer(mk("b", "b.png"));
-        s.upsert_set(ScreamSet {
+        s.upsert_set(&mut ScreamSet {
             id: "s".into(),
             items: vec![SetItem { screamer_id: "a".into(), weight: 3 }, SetItem { screamer_id: "b".into(), weight: 1 }],
             ..Default::default()
