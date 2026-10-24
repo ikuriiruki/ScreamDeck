@@ -162,10 +162,10 @@ impl Store {
     }
 
     pub fn import_media(&self, src: &Path) -> Result<(String, MediaKind), StoreError> {
-        let (name, ext) = self.import(src, &["gif", "png", "jpg", "jpeg", "webp", "mp4", "webm"])?;
+        let (name, ext) = self.import(src, &["gif", "png", "jpg", "jpeg", "webp", "mp4", "webm", "mov"])?;
         let kind = match ext.as_str() {
             "gif" => MediaKind::Gif,
-            "mp4" | "webm" => MediaKind::Video,
+            "mp4" | "webm" | "mov" => MediaKind::Video,
             _ => MediaKind::Image,
         };
         Ok((name, kind))
@@ -331,6 +331,7 @@ mod tests {
         fs::write(d.path().join("library.json"), r#"{"screamers":[{"id":"a","name":"A","media":{"file":"a.png","kind":"image"}}],"sets":[{"id":"s","name":"S","items":[{"screamerId":"a"}]}]}"#).unwrap();
         let s = Store::load(d.path().to_path_buf());
         assert_eq!(s.library.screamers[0].volume, 100);
+        assert_eq!(s.library.screamers[0].opacity, 100);
         assert_eq!(s.library.screamers[0].fit, Fit::Cover);
         assert!(s.library.sets[0].api_enabled);
         assert_eq!(s.library.sets[0].items[0].weight, 1);
@@ -409,7 +410,7 @@ mod tests {
     fn import_media_copies_and_detects_kind() {
         let d = tempdir().unwrap();
         let s = Store::load(d.path().join("cfg"));
-        for (n, k) in [("a.GIF", MediaKind::Gif), ("a.jpeg", MediaKind::Image), ("a.webm", MediaKind::Video)] {
+        for (n, k) in [("a.GIF", MediaKind::Gif), ("a.jpeg", MediaKind::Image), ("a.webm", MediaKind::Video), ("a.MOV", MediaKind::Video)] {
             let src = d.path().join(n);
             fs::write(&src, "x").unwrap();
             let (name, kind) = s.import_media(&src).unwrap();

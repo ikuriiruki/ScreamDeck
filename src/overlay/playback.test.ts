@@ -9,6 +9,7 @@ const base: Screamer = {
   sound: { mode: "none" },
   duration: { mode: "bySound" },
   volume: 100,
+  opacity: 100,
   fit: "cover",
   thumb: null,
 };

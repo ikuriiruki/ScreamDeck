@@ -8,7 +8,7 @@ import type { Library, Screamer, Status } from "../lib/types";
 import { Button, ConfirmDialog, FormField, Icon, Input, Segmented, Slider, SnapSlider, SubScreen } from "../ui";
 import type { Notify } from "./Sets";
 
-const MEDIA = ["png", "jpg", "jpeg", "webp", "gif", "mp4", "webm"];
+const MEDIA = ["png", "jpg", "jpeg", "webp", "gif", "mp4", "webm", "mov"];
 const SOUND = ["mp3", "ogg", "wav", "m4a"];
 const baseName = (path: string) => path.split(/[\\/]/).pop()!;
 const soundFile = (s: Screamer | null) => (s?.sound.mode === "file" ? s.sound : null);
@@ -66,7 +66,7 @@ export function ScreamerEdit({ id, library, status, notify, onBack }: {
     setDraft(withValidModes(draft ? { ...draft, media } : {
       id: "", name: baseName(path).replace(/\.[^.]+$/, ""), media,
       sound: kind === "video" ? { mode: "fromVideo" } : { mode: "none" },
-      duration: { mode: "bySound" }, volume: 100, fit: "cover", thumb: null,
+      duration: { mode: "bySound" }, volume: 100, opacity: 100, fit: "cover", thumb: null,
     }));
   };
   const pickSound = async (s: Screamer) => {
@@ -174,8 +174,8 @@ export function ScreamerEdit({ id, library, status, notify, onBack }: {
         <>
           <div className="relative aspect-video shrink-0 overflow-hidden rounded-2xl bg-black">
             {s.media.kind === "video"
-              ? <video key={s.media.file} src={url(s.media.file)} controls preload="metadata" className={`size-full ${s.fit === "cover" ? "object-cover" : "object-contain"}`} />
-              : <img key={s.media.file} src={url(s.media.file)} alt="" className={`size-full ${s.fit === "cover" ? "object-cover" : "object-contain"}`} />}
+              ? <video key={s.media.file} src={url(s.media.file)} controls preload="metadata" style={{ opacity: s.opacity / 100 }} className={`size-full ${s.fit === "cover" ? "object-cover" : "object-contain"}`} />
+              : <img key={s.media.file} src={url(s.media.file)} alt="" style={{ opacity: s.opacity / 100 }} className={`size-full ${s.fit === "cover" ? "object-cover" : "object-contain"}`} />}
             <div className="absolute inset-x-2.5 top-2.5 flex items-center gap-2">
               <span className="mr-auto min-w-0 truncate rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-[#f7f1e8]">
                 {names.media ?? t(`kinds.${s.media.kind}`)}{s.media.durationMs != null && ` · ${sec(s.media.durationMs)}`}
@@ -239,6 +239,10 @@ export function ScreamerEdit({ id, library, status, notify, onBack }: {
 
             <Group label={t("screamer.volumeValue", { value: s.volume })}>
               <Slider aria-label={t("screamer.volume")} value={s.volume} onChange={(volume) => setDraft({ ...s, volume })} className="my-2" />
+            </Group>
+
+            <Group label={t("screamer.opacityValue", { value: s.opacity })}>
+              <Slider aria-label={t("screamer.opacity")} min={10} value={s.opacity} onChange={(opacity) => setDraft({ ...s, opacity })} className="my-2" />
             </Group>
 
             <Group label={t("screamer.fit.label")}>

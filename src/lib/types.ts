@@ -20,6 +20,8 @@ export interface Screamer {
   sound: Sound;
   duration: DurationMode;
   volume: number;
+  /** 10..100, percent. */
+  opacity: number;
   fit: Fit;
   thumb: string | null;
 }

@@ -10,7 +10,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 const LIMIT: u64 = 1 << 30;
 const MANIFEST_LIMIT: u64 = 16 << 20;
-const MEDIA_EXT: &[&str] = &["gif", "png", "jpg", "jpeg", "webp", "mp4", "webm", "mp3", "ogg", "wav", "m4a"];
+const MEDIA_EXT: &[&str] = &["gif", "png", "jpg", "jpeg", "webp", "mp4", "webm", "mov", "mp3", "ogg", "wav", "m4a"];
 
 #[derive(Debug)]
 pub enum BundleError {
@@ -216,6 +216,7 @@ fn plan(path: &Path, store: &Store, limit: u64) -> Result<Plan, BundleError> {
             continue;
         }
         s.volume = s.volume.min(100);
+        s.opacity = s.opacity.clamp(10, 100);
         let sound = match &s.sound {
             Sound::File { file, .. } => Some(file.clone()),
             _ => None,

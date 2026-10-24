@@ -101,7 +101,7 @@
   "screamer": {
     "new": "Новый скример",
     "pick": "Выбрать файл",
-    "formats": "Картинка, гифка или видео: PNG, JPG, WebP, GIF, MP4, WebM",
+    "formats": "Картинка, гифка или видео: PNG, JPG, WebP, GIF, MP4, WebM, MOV",
     "mediaFiles": "Картинки и видео",
     "soundFiles": "Звук",
     "replace": "Заменить файл",
@@ -123,6 +123,8 @@
     },
     "volume": "Громкость",
     "volumeValue": "Громкость · {{value}}%",
+    "opacity": "Непрозрачность",
+    "opacityValue": "Непрозрачность · {{value}}%",
     "fit": {
       "label": "Вписывание",
       "cover": "Заполнить",

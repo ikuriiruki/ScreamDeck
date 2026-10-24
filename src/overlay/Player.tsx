@@ -66,7 +66,7 @@ export function Player({ mode, audio }: { mode: "pc" | "obs"; audio: boolean }) 
       const { screamer: s, showId } = show;
       const plan = planPlayback(s, show.durationMs);
       const visual = take(s.media.file, s.media.kind === "video" ? "video" : "img");
-      visual.style.cssText = `position:fixed;inset:0;width:100%;height:100%;object-fit:${s.fit};visibility:hidden;background:transparent`;
+      visual.style.cssText = `position:fixed;inset:0;width:100%;height:100%;object-fit:${s.fit};opacity:${s.opacity / 100};visibility:hidden;background:transparent`;
       const p: Prepared = { showId, els: [visual], visual };
       if (visual instanceof HTMLVideoElement) {
         p.video = visual;

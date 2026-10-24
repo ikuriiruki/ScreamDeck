@@ -56,6 +56,7 @@ pub struct Screamer {
     pub sound: Sound,
     pub duration: DurationMode,
     pub volume: u8,
+    pub opacity: u8,
     pub fit: Fit,
     pub thumb: Option<String>,
 }
@@ -69,6 +70,7 @@ impl Default for Screamer {
             sound: Sound::default(),
             duration: DurationMode::default(),
             volume: 100,
+            opacity: 100,
             fit: Fit::default(),
             thumb: None,
         }

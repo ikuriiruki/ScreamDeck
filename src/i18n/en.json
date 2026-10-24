@@ -99,7 +99,7 @@
   "screamer": {
     "new": "New screamer",
     "pick": "Choose a file",
-    "formats": "An image, GIF or video: PNG, JPG, WebP, GIF, MP4, WebM",
+    "formats": "An image, GIF or video: PNG, JPG, WebP, GIF, MP4, WebM, MOV",
     "mediaFiles": "Images and videos",
     "soundFiles": "Sound",
     "replace": "Replace file",
@@ -121,6 +121,8 @@
     },
     "volume": "Volume",
     "volumeValue": "Volume · {{value}}%",
+    "opacity": "Opacity",
+    "opacityValue": "Opacity · {{value}}%",
     "fit": {
       "label": "Fit",
       "cover": "Fill",
