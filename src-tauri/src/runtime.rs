@@ -66,6 +66,7 @@ pub struct AppState {
     pub server_task: Mutex<Option<JoinHandle<()>>>,
     /// Held across a whole restart: overlapping restarts would each bind and orphan a server.
     server_restart: tokio::sync::Mutex<()>,
+    /// The stop hotkey that failed to register (taken by another program, or unparseable).
     pub hotkey_error: Mutex<Option<String>>,
     /// Asset-protocol scope for media/ and thumbs/ could not be set: windows can't load files.
     pub media_error: Mutex<Option<String>>,
@@ -198,13 +199,18 @@ pub fn on_library_changed<R: Runtime>(app: &AppHandle<R>) {
 
 /// Applies everything it can; returns the first failure so the UI can say what didn't apply.
 pub fn apply_settings<R: Runtime>(app: &AppHandle<R>, old: &Settings) -> Result<(), String> {
-    let new = app.state::<AppState>().store.lock().unwrap().settings.clone();
+    let st = app.state::<AppState>();
+    let mut new = st.store.lock().unwrap().settings.clone();
     let mut result = Ok(());
     if new.monitors != old.monitors || new.hide_from_capture != old.hide_from_capture {
         result = result.and(monitors::open_monitor_windows(app, &new.monitors, new.hide_from_capture).map_err(|e| format!("monitor windows: {e}")));
     }
-    if new.stop_hotkey != old.stop_hotkey {
-        register_hotkey(app, &new.stop_hotkey);
+    // A key that didn't register leaves the old one working and saved; Status.hotkeyError says why.
+    if new.stop_hotkey != old.stop_hotkey && register_hotkey(app, &new.stop_hotkey, &old.stop_hotkey) {
+        let mut store = st.store.lock().unwrap();
+        store.settings.stop_hotkey = old.stop_hotkey.clone();
+        new.stop_hotkey = old.stop_hotkey.clone();
+        result = result.and(store.save_settings().map_err(|e| e.to_string()));
     }
     if new.autostart != old.autostart {
         use tauri_plugin_autostart::ManagerExt;
@@ -244,21 +250,30 @@ pub fn reload_library<R: Runtime>(app: &AppHandle<R>, keep_enabled: bool) {
     on_library_changed(app);
 }
 
-pub fn register_hotkey<R: Runtime>(app: &AppHandle<R>, hotkey: &str) {
-    let gs = app.global_shortcut();
-    let _ = gs.unregister_all();
-    let err = if hotkey.is_empty() {
-        None
-    } else {
-        gs.on_shortcut(hotkey, |app, _, e| {
+/// Makes `hotkey` the only global shortcut. If it can't be registered (e.g. another program holds it),
+/// `fallback` (the previous one) is put back; returns whether that happened, so the caller keeps it saved.
+pub fn register_hotkey<R: Runtime>(app: &AppHandle<R>, hotkey: &str, fallback: &str) -> bool {
+    let _ = app.global_shortcut().unregister_all();
+    let err = bind_hotkey(app, hotkey).err();
+    let restored = err.is_some() && !fallback.is_empty() && bind_hotkey(app, fallback).is_ok();
+    *app.state::<AppState>().hotkey_error.lock().unwrap() = err;
+    restored
+}
+
+fn bind_hotkey<R: Runtime>(app: &AppHandle<R>, hotkey: &str) -> Result<(), String> {
+    if hotkey.is_empty() {
+        return Ok(());
+    }
+    app.global_shortcut()
+        .on_shortcut(hotkey, |app, _, e| {
             if e.state == ShortcutState::Pressed {
                 stop_all(app);
             }
         })
-        .err()
-        .map(|e| e.to_string())
-    };
-    *app.state::<AppState>().hotkey_error.lock().unwrap() = err;
+        .map_err(|e| {
+            eprintln!("screamdeck: hotkey {hotkey}: {e}");
+            hotkey.to_string()
+        })
 }
 
 pub fn status<R: Runtime>(app: &AppHandle<R>) -> Status {
@@ -430,7 +445,7 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
     if let Err(e) = monitors::open_monitor_windows(app, &settings.monitors, settings.hide_from_capture) {
         eprintln!("screamdeck: monitor windows: {e}");
     }
-    register_hotkey(app, &settings.stop_hotkey);
+    register_hotkey(app, &settings.stop_hotkey, "");
     reload_library(app, settings.restore_enabled_sets);
     spawn_restart_server(app);
 }

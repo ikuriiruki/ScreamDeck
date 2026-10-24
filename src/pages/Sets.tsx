@@ -83,7 +83,7 @@ function Verdict({ status, notify }: { status: Status; notify: Notify }) {
         action={
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <button type="button" className={link} onClick={() => void retryDataDir().catch(fail(notify))}>{t("sets.dataDir.retry")}</button>
-            <button type="button" className={link} onClick={() => void choose().catch(fail(notify))}>{t("sets.dataDir.choose")}</button>
+            <button type="button" className={link} onClick={() => void choose().catch((e) => notify(t(`dataDirError.${e}`, { defaultValue: String(e) }), "err"))}>{t("sets.dataDir.choose")}</button>
           </div>
         }
       />

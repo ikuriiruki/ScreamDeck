@@ -13,6 +13,8 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewWindowBuilder};
 
+const AUTOSTART_ARG: &str = "--autostart";
+
 fn is_ru(settings: &Settings) -> bool {
     match settings.language.as_deref() {
         Some(l) => l.starts_with("ru"),
@@ -51,7 +53,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().arg(AUTOSTART_ARG).build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let store = store::Store::load(app.path().app_config_dir()?);
             let menu = tray_menu(app.handle(), &store.settings)?;
@@ -74,6 +77,10 @@ pub fn run() {
                 })
                 .build(app)?;
             runtime::init(app.handle());
+            // Started with Windows: stay in the tray (the main window is `create: false` in tauri.conf.json).
+            if !std::env::args().any(|a| a == AUTOSTART_ARG) {
+                open_main(app.handle());
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -97,6 +104,7 @@ pub fn run() {
             commands::player_ready,
             commands::inspect_data_dir,
             commands::change_data_dir,
+            commands::open_data_dir,
             commands::retry_data_dir,
             commands::pick_free_port,
             commands::export_bundle,

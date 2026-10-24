@@ -77,6 +77,7 @@ export interface Status {
   server: ServerStatus;
   dataDir: DataDirStatus;
   dataPath: string;
+  /** The stop hotkey that failed to register. */
   hotkeyError: string | null;
   mediaError: string | null;
   version: string;

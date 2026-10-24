@@ -3,7 +3,7 @@ use crate::model::{Id, Library, MediaKind, ScreamSet, Screamer, Settings, Target
 use crate::monitors::{self, MonitorInfo};
 use crate::player::Source;
 use crate::runtime::{self, AppState, Status};
-use crate::store::{DirState, Store};
+use crate::store::{DirState, Store, StoreError};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::MutexGuard;
@@ -180,9 +180,22 @@ pub fn inspect_data_dir(path: PathBuf) -> DirState {
 #[tauri::command]
 pub async fn change_data_dir(app: AppHandle, path: PathBuf, mov: bool) -> CmdResult {
     runtime::stop_all(&app);
-    store(&app).change_data_dir(path, mov).map_err(|e| e.to_string())?;
+    store(&app).change_data_dir(path, mov).map_err(|e| match e {
+        // codes the UI translates
+        StoreError::NotWritable => "notWritable".to_string(),
+        StoreError::DestinationNotEmpty => "destinationNotEmpty".to_string(),
+        e => e.to_string(),
+    })?;
     runtime::reload_library(&app, false);
     Ok(())
+}
+
+/// From Rust, so the webview needs no opener scope for arbitrary paths.
+#[tauri::command]
+pub fn open_data_dir(app: AppHandle) -> CmdResult {
+    use tauri_plugin_opener::OpenerExt;
+    let dir = store(&app).data_dir();
+    app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

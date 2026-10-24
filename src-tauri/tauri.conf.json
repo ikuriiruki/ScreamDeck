@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "ScreamDeck",
         "width": 420,
         "height": 680,
@@ -27,6 +28,12 @@
         "enable": true,
         "scope": []
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/ikuriiruki/ScreamDeck/releases/latest/download/latest.json"],
+      "pubkey": "REPLACE_WITH_PUBLIC_KEY"
     }
   },
   "bundle": {

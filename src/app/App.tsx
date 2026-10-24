@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { stop, updateSettings, useLibrary, useSettings, useStatus } from "../lib/api";
-import type { Settings } from "../lib/types";
+import { stop, useLibrary, useSettings, useStatus } from "../lib/api";
 import { ScreamerEdit } from "../pages/ScreamerEdit";
 import { Screamers } from "../pages/Screamers";
 import { SetDetail } from "../pages/SetDetail";
 import { Sets, type Notify } from "../pages/Sets";
-import { BottomNav, Button, Segmented, TabScreen, Toasts, type Tab, type Toast } from "../ui";
-import i18n, { languageOf, type Language } from "./i18n";
+import { Settings } from "../pages/Settings";
+import { BottomNav, Button, TabScreen, Toasts, type Tab, type Toast } from "../ui";
+import i18n, { languageOf } from "./i18n";
 import { applyTheme } from "./theme";
 
 type Screen = { tab: Tab; sub?: { kind: "set" | "screamer"; id: string | null } };
@@ -48,38 +48,12 @@ export default function App() {
           {screen.tab === "screamers" && library && status && (
             <Screamers library={library} status={status} notify={notify} onOpen={(id) => setScreen({ tab: "screamers", sub: { kind: "screamer", id } })} />
           )}
-          {screen.tab === "settings" && settings && <LookSettings settings={settings} language={language} />}
+          {screen.tab === "settings" && settings && library && status && (
+            <Settings settings={settings} status={status} library={library} language={language} notify={notify} />
+          )}
         </TabScreen>
       )}
       <Toasts items={toasts} onDismiss={(id) => setToasts((ts) => ts.filter((x) => x.id !== id))} dismissLabel={t("dismiss")} />
     </>
-  );
-}
-
-// Placeholder until the settings screen: just language and theme.
-function LookSettings({ settings, language }: { settings: Settings; language: Language }) {
-  const { t } = useTranslation();
-  const save = (patch: Partial<Settings>) => void updateSettings({ ...settings, ...patch });
-  return (
-    <div className="flex flex-col gap-0.5 rounded-3xl bg-surface p-1.5">
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <span className="flex-1 font-medium">{t("settings.language")}</span>
-        <Segmented
-          soft className="w-[150px]" label={t("settings.language")} value={language} onChange={(language) => save({ language })}
-          options={[{ value: "ru", label: "RU" }, { value: "en", label: "EN" }]}
-        />
-      </div>
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <span className="flex-1 font-medium">{t("settings.theme.label")}</span>
-        <Segmented
-          soft className="w-[150px]" label={t("settings.theme.label")} value={settings.theme} onChange={(theme) => save({ theme })}
-          options={[
-            { value: "light", label: t("settings.theme.light"), icon: "sun" },
-            { value: "dark", label: t("settings.theme.dark"), icon: "moon" },
-            { value: "system", label: t("settings.theme.system"), icon: "monitor" },
-          ]}
-        />
-      </div>
-    </div>
   );
 }

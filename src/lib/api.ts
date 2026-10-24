@@ -38,8 +38,11 @@ export const resetSettings = () => invoke<void>("reset_settings");
 export const listMonitors = () => invoke<MonitorInfo[]>("list_monitors");
 
 export const inspectDataDir = (path: string) => invoke<DirState>("inspect_data_dir", { path });
-/** `move`: copy the library over; otherwise open the one already in `path`. */
+/** `move`: copy the library over; otherwise open the one already in `path`. Fails with "notWritable",
+ *  "destinationNotEmpty" (keys of `dataDirError` in i18n) or an I/O message. */
 export const changeDataDir = (path: string, move: boolean) => invoke<void>("change_data_dir", { path, mov: move });
+/** Opens the data folder in Explorer. */
+export const openDataDir = () => invoke<void>("open_data_dir");
 export const retryDataDir = () => invoke<void>("retry_data_dir");
 /** Finds a free port, saves it and restarts the server; returns the port. */
 export const pickFreePort = () => invoke<number>("pick_free_port");

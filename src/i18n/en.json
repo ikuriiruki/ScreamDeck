@@ -135,6 +135,63 @@
   },
   "settings": {
     "language": "Language",
-    "theme": { "label": "Theme", "light": "Light", "dark": "Dark", "system": "System" }
-  }
+    "theme": { "label": "Theme", "light": "Light", "dark": "Dark", "system": "System" },
+    "pc": {
+      "title": "PC screen — full screen",
+      "lost": "The chosen monitors are not connected — the primary one is used",
+      "hide": "Hide from capture",
+      "hideHint": "viewers only see the OBS overlay",
+      "fullscreen": "Screamers can't show over exclusive fullscreen — switch the game to “Borderless windowed”."
+    },
+    "obs": {
+      "title": "OBS — “Browser” source",
+      "test": "Test",
+      "testEmpty": "The library has no screamers yet",
+      "sound": "Overlay sound",
+      "off": "Off",
+      "on": "On",
+      "soundHint": "The screamer's sound already reaches the stream through “Desktop Audio”. Turn this on only if that is off, or the sound plays twice."
+    },
+    "general": "General",
+    "hotkey": "“Stop” key",
+    "hotkeyError": "Couldn’t set {{hotkey}}. Another program holds this combo or it is unavailable — pick another one.",
+    "port": {
+      "label": "API port",
+      "range": "The port is a number from 1024 to 65535",
+      "changed": "Port changed — update the link in OBS: http://127.0.0.1:{{port}}/overlay"
+    },
+    "autostart": "Start with Windows",
+    "autostartHint": "the app starts minimized to the tray",
+    "restoreSets": "Restore enabled sets on start",
+    "dataDir": {
+      "label": "Data folder",
+      "open": "Open in Explorer",
+      "change": "Change",
+      "same": "This already is the data folder",
+      "openTitle": "Open this library?",
+      "openBody": "The folder already has a ScreamDeck library. The current one stays where it is. Enabled sets will stop.",
+      "openConfirm": "Open",
+      "moveTitle": "Move the data here?",
+      "moveBody": "Enabled sets will stop. Screamers and files are copied, checked, and then the old copy is deleted.",
+      "moveConfirm": "Move",
+      "opened": "Library opened",
+      "moved": "Data moved"
+    },
+    "updates": {
+      "label": "Updates",
+      "check": "Check",
+      "latest": "up to date",
+      "available": "{{version}} available",
+      "install": "Install and restart",
+      "failed": "Couldn't check for updates: {{error}}"
+    },
+    "reset": {
+      "action": "Reset settings to defaults",
+      "title": "Reset settings?",
+      "body": "Screamers, sets and the data folder stay.",
+      "confirm": "Reset",
+      "done": "Settings reset"
+    }
+  },
+  "dataDirError": { "notWritable": "This folder isn't writable — choose another one", "destinationNotEmpty": "The folder already has ScreamDeck files (media or thumbs) — choose an empty folder" }
 }
