@@ -1,7 +1,7 @@
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { deleteScreamer, discardMedia, importMedia, importSound, mediaUrl, saveScreamer, saveThumbnail, triggerTest } from "../lib/api";
+import { deleteScreamer, discardMedia, exportBundle, importMedia, importSound, mediaUrl, saveScreamer, saveThumbnail, triggerTest } from "../lib/api";
 import { durationMarks, formatSeconds, initialCustomDuration, showDurationMs, withValidModes } from "../lib/duration";
 import { makeThumbnail, measureAudio, measureMedia } from "../lib/media";
 import type { Library, Screamer, Status } from "../lib/types";
@@ -114,6 +114,13 @@ export function ScreamerEdit({ id, library, status, notify, onBack }: {
     await cleanup();
     onBack();
   });
+  // exports what the library holds, not unsaved edits
+  const exportOne = (s: Screamer) => run(async () => {
+    const path = await saveDialog({ defaultPath: `${s.name.replace(/[\\/:*?"<>|]/g, "_")}.zip`, filters: [{ name: "ZIP", extensions: ["zip"] }] });
+    if (!path) return;
+    await exportBundle(path, [], [s.id]);
+    notify(t("screamer.exported"));
+  });
   const remove = () => run(async () => {
     await deleteScreamer(original!.id);
     await cleanup();
@@ -140,6 +147,12 @@ export function ScreamerEdit({ id, library, status, notify, onBack }: {
                 style={{ positionAnchor: anchor, inset: "auto", right: "anchor(right)", bottom: "anchor(top)", margin: "0 0 8px" } as CSSProperties}
                 className="rounded-3xl border-0 bg-surface p-2 text-ink shadow-lift"
               >
+                <button
+                  type="button" popoverTarget={menuId} popoverTargetAction="hide" disabled={busy} onClick={() => exportOne(stored ?? original)}
+                  className="flex h-10 items-center gap-3 rounded-full px-3.5 text-[15px] font-medium whitespace-nowrap transition-colors duration-200 ease-k hover:bg-surface-2 focus-visible:bg-surface-2 disabled:opacity-50"
+                >
+                  <Icon name="download" />{t("screamer.export")}
+                </button>
                 <button
                   type="button" popoverTarget={menuId} popoverTargetAction="hide" onClick={() => setDeleting(true)}
                   className="flex h-10 items-center gap-3 rounded-full px-3.5 text-[15px] font-medium whitespace-nowrap text-err-ink transition-colors duration-200 ease-k hover:bg-surface-2 focus-visible:bg-surface-2"

@@ -6,7 +6,7 @@
 
 1. Скачайте `ScreamDeck_*-setup.exe` из [последнего релиза](https://github.com/ikuriiruki/ScreamDeck/releases/latest) и запустите.
 2. Установщик не подписан кодом, поэтому Windows SmartScreen покажет «Windows защитила ваш компьютер». Нажмите **Подробнее → Выполнить в любом случае**.
-3. Обновления приходят сами: приложение проверяет GitHub Releases (подпись обновлений проверяется ключом Tauri).
+3. Обновления: Настройки → «Обновления» → **Проверить**. Приложение ищет новую версию в GitHub Releases и ставит её по кнопке «Установить и перезапустить» (подпись обновления проверяется ключом Tauri).
 
 После установки все наборы выключены: скримеры не появятся сами. Включённость наборов по умолчанию не восстанавливается при запуске (настройка «Восстанавливать включённые наборы при запуске» выключена), чтобы автозапуск не пугал, когда стрима нет.
 
@@ -88,7 +88,7 @@ Workflow `release.yml` прогонит тесты и опубликует ре�
 
 ScreamDeck is a Windows app that shows "screamers" (image, gif or video with sound) over your screen and in OBS. Group them into sets that fire on a random timer, or trigger them over a localhost-only HTTP API (Stream Deck, Twitch rewards).
 
-- **Install:** download the setup `.exe` from the latest release. It is not code-signed: on SmartScreen click *More info -> Run anyway*. Updates are automatic. A fresh install starts with all sets turned off.
+- **Install:** download the setup `.exe` from the latest release. It is not code-signed: on SmartScreen click *More info -> Run anyway*. Updates: Settings → Updates → *Check*, then *Install and restart*. A fresh install starts with all sets turned off.
 - **OBS:** add a *Browser* source with `http://127.0.0.1:7811/overlay`, capture sound via *Desktop Audio* (overlay sound is off by default). The PC overlay is hidden from capture; check it with the Test button. Games must run in borderless windowed mode.
 - **API:** see the table above. Localhost only; requests with a foreign `Origin`/`Host` get 403.
 - **Dev:** `pnpm install && pnpm build && pnpm tauri dev`. Run `pnpm build` before `cargo test` (rust-embed needs `dist/`). Release: push a `v*` tag.

@@ -56,10 +56,14 @@ export function Sets({ library, status, notify, onOpen }: { library: Library; st
   );
 }
 
+/** The corrupt-library banner closed this run (its backup path). */
+let dismissedBackup: string | null = null;
+
 /** Each problem gets its own banner (data folder, media access, busy port), so none hides another's fix; with none, how many sets run. */
 function Verdict({ status, notify }: { status: Status; notify: Notify }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
+  const [hidden, setHidden] = useState(dismissedBackup);
   const link = "text-[15px] font-medium underline decoration-[1.5px] underline-offset-4 transition-opacity duration-200 ease-k hover:opacity-75 disabled:opacity-50";
   const path = (p: string) => <span className="break-all">{p}</span>;
   const dir = status.dataDir;
@@ -88,8 +92,11 @@ function Verdict({ status, notify }: { status: Status; notify: Notify }) {
         }
       />
     ),
-    dir.state === "corrupt" && (
-      <VerdictBanner key="dir" tone="down" num="!" title={t("sets.dataDir.corrupt")} sub={path(t("sets.dataDir.corruptSub", { backup: dir.backup }))} />
+    dir.state === "corrupt" && dir.backup !== hidden && (
+      <VerdictBanner
+        key="dir" tone="down" num="!" title={t("sets.dataDir.corrupt")} sub={path(t("sets.dataDir.corruptSub", { backup: dir.backup }))}
+        action={<button type="button" className={link} onClick={() => setHidden((dismissedBackup = dir.backup))}>{t("dismiss")}</button>}
+      />
     ),
     status.mediaError && <VerdictBanner key="media" tone="down" num="!" title={t("sets.mediaError")} sub={status.mediaError} />,
     server.state === "portBusy" && (

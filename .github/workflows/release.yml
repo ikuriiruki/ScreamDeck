@@ -23,6 +23,13 @@ jobs:
       # rust-embed reads ../dist at compile time, a fresh clone has none
       - run: pnpm build
       - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Check the updater public key is set
+        shell: bash
+        run: |
+          if grep -q REPLACE_WITH_PUBLIC_KEY src-tauri/tauri.conf.json; then
+            echo "::error file=src-tauri/tauri.conf.json::plugins.updater.pubkey is still REPLACE_WITH_PUBLIC_KEY. Run 'pnpm tauri signer generate', put the public key there and the private key in the TAURI_SIGNING_PRIVATE_KEY secret."
+            exit 1
+          fi
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

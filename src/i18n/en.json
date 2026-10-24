@@ -90,7 +90,11 @@
     "empty": "No screamers yet — add the first one",
     "inSets_one": "in {{count}} set",
     "inSets_other": "in {{count}} sets",
-    "nowhere": "in no set"
+    "nowhere": "in no set",
+    "select": "Select to export",
+    "selected": "Selected: {{count}}",
+    "export": "Export",
+    "exported": "Screamers exported"
   },
   "screamer": {
     "new": "New screamer",
@@ -124,6 +128,8 @@
     },
     "test": "Test",
     "save": "Save",
+    "export": "Export",
+    "exported": "Screamer exported",
     "delete": "Delete screamer",
     "deleteConfirm": {
       "title": "Delete screamer “{{name}}”?",

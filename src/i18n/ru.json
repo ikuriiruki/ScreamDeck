@@ -92,7 +92,11 @@
     "inSets_few": "в {{count}} наборах",
     "inSets_many": "в {{count}} наборах",
     "inSets_other": "в {{count}} наборах",
-    "nowhere": "нигде"
+    "nowhere": "нигде",
+    "select": "Выбрать для экспорта",
+    "selected": "Выбрано: {{count}}",
+    "export": "Экспорт",
+    "exported": "Скримеры экспортированы"
   },
   "screamer": {
     "new": "Новый скример",
@@ -126,6 +130,8 @@
     },
     "test": "Проверить",
     "save": "Сохранить",
+    "export": "Экспорт",
+    "exported": "Скример экспортирован",
     "delete": "Удалить скример",
     "deleteConfirm": {
       "title": "Удалить скример «{{name}}»?",
