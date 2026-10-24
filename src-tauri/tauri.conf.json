@@ -33,7 +33,7 @@
   "plugins": {
     "updater": {
       "endpoints": ["https://github.com/ikuriiruki/ScreamDeck/releases/latest/download/latest.json"],
-      "pubkey": "REPLACE_WITH_PUBLIC_KEY"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM0MzI5RkY2RTQ2NzA1QTcKUldTbkJXZms5cDh5eEVNMGVDcEhZdXdXdTlIZVJpM0tYYmJVWjlXL0h4dXlaZTVTdFI1YTRrN0IK"
     }
   },
   "bundle": {
