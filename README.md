@@ -92,3 +92,7 @@ ScreamDeck is a Windows app that shows "screamers" (image, gif or video with sou
 - **OBS:** add a *Browser* source with `http://127.0.0.1:7811/overlay`, capture sound via *Desktop Audio* (overlay sound is off by default). The PC overlay is hidden from capture; check it with the Test button. Games must run in borderless windowed mode.
 - **API:** see the table above. Localhost only; requests with a foreign `Origin`/`Host` get 403.
 - **Dev:** `pnpm install && pnpm build && pnpm tauri dev`. Run `pnpm build` before `cargo test` (rust-embed needs `dist/`). Release: push a `v*` tag.
+
+## Лицензия / License
+
+[MIT](LICENSE) © 2026 ikuriiruki
